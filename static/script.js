@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (e.key === '3') navigate('routines');
             if (e.key === '4') navigate('dot-chat');
             if (e.key === '5') navigate('settings');
+            if (e.key === '6') navigate('finance');
         } else {
             // Only allow 0 to go back if we are not on intro screen
             if (e.key === '0' && document.getElementById('intro-screen').classList.contains('hidden')) {
@@ -79,6 +80,8 @@ function navigate(section) {
             loadRoutines();
         } else if (section === 'dot-chat') {
             loadGeneralChat();
+        } else if (section === 'finance') {
+            loadFinance();
         }
     }
 }
@@ -390,6 +393,89 @@ document.getElementById('general-chat-form')?.addEventListener('submit', async (
     const result = await res.json();
     if (result.status === 'success') {
         appendGeneralChat('Dot', result.response);
+    }
+});
+
+// --- Finance Functions ---
+async function loadFinance() {
+    const res = await fetch('/api/finance');
+    const data = await res.json();
+
+    const graphContainer = document.getElementById('finance-graph');
+    graphContainer.innerHTML = '';
+
+    if (data.daily_totals && data.daily_totals.length > 0) {
+        // Find max total for scaling bars
+        let maxVal = 0;
+        data.daily_totals.forEach(d => {
+            if (d.total_spent > maxVal) maxVal = d.total_spent;
+            if (d.total_won > maxVal) maxVal = d.total_won;
+        });
+
+        data.daily_totals.forEach(d => {
+            const spentPct = maxVal > 0 ? (d.total_spent / maxVal) * 100 : 0;
+            const wonPct = maxVal > 0 ? (d.total_won / maxVal) * 100 : 0;
+
+            const dayRow = document.createElement('div');
+            dayRow.style.marginBottom = '10px';
+            dayRow.innerHTML = `
+                <div style="font-size: 0.8rem; color: #aaa;">${d.date}</div>
+                <div style="display: flex; gap: 5px; align-items: center; height: 15px;">
+                    <span style="font-size: 0.7rem; width: 40px; text-align: right; color: #ff3333;">-${d.total_spent.toFixed(2)}</span>
+                    <div style="flex: 1; display: flex; height: 100%;">
+                        <div style="width: ${spentPct}%; background-color: #ff3333;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 5px; align-items: center; height: 15px;">
+                    <span style="font-size: 0.7rem; width: 40px; text-align: right; color: #00ff00;">+${d.total_won.toFixed(2)}</span>
+                    <div style="flex: 1; display: flex; height: 100%;">
+                        <div style="width: ${wonPct}%; background-color: #00ff00;"></div>
+                    </div>
+                </div>
+            `;
+            graphContainer.appendChild(dayRow);
+        });
+    } else {
+        graphContainer.innerHTML = '<p style="color: #aaa;">No transactions recorded.</p>';
+    }
+}
+
+document.getElementById('finance-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const amount = document.getElementById('finance-amount').value;
+    const desc = document.getElementById('finance-desc').value;
+    const category = document.getElementById('finance-category').value;
+
+    document.getElementById('finance-feedback').innerText = "Logging transaction...";
+
+    const res = await fetch('/api/finance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: parseFloat(amount), description: desc, category: category })
+    });
+    const result = await res.json();
+
+    if (result.status === 'success') {
+        document.getElementById('finance-feedback').innerText = "Transaction logged.";
+        const chatBox = document.getElementById('finance-chat-box');
+        chatBox.innerHTML += `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #008080;"><strong>[DOT]:</strong> ${result.dot_message}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        document.getElementById('finance-form').reset();
+        loadFinance();
+    }
+});
+
+document.getElementById('finance-advice-btn')?.addEventListener('click', async () => {
+    const chatBox = document.getElementById('finance-chat-box');
+    chatBox.innerHTML += `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #008080; color: #888;">Requesting financial analysis...</div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    const res = await fetch('/api/finance/advice');
+    const result = await res.json();
+
+    if (result.status === 'success') {
+        chatBox.innerHTML += `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #008080;"><strong>[DOT]:</strong> ${result.advice}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 });
 

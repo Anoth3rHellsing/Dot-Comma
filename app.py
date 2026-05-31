@@ -246,6 +246,62 @@ def api_finish_intro():
     conn.close()
     return jsonify({'status': 'success'})
 
+@app.route('/api/finance', methods=['GET', 'POST'])
+def api_finance():
+    conn = get_db_connection()
+    if request.method == 'GET':
+        # Group expenses by date (ignoring time) for the last 7 days roughly, or just all
+        query = '''
+            SELECT DATE(date) as date,
+                   SUM(CASE WHEN category='spent' THEN amount ELSE 0 END) as total_spent,
+                   SUM(CASE WHEN category='won' THEN amount ELSE 0 END) as total_won
+            FROM expenses
+            GROUP BY date
+            ORDER BY date DESC
+            LIMIT 7
+        '''
+        daily_totals = conn.execute(query).fetchall()
+        conn.close()
+        return jsonify({'daily_totals': [dict(d) for d in daily_totals]})
+
+    elif request.method == 'POST':
+        data = request.json
+        amount = data.get('amount')
+        desc = data.get('description')
+        category = data.get('category')
+
+        conn.execute('INSERT INTO expenses (amount, description, category) VALUES (?, ?, ?)', (amount, desc, category))
+        conn.commit()
+
+        # Determine if it's necessary to scold
+        if category == 'spent':
+            prompt = f"The user just logged an expense of ${amount} for '{desc}'. If this seems unnecessary, frivolous, or could have been avoided, SCOLD THEM MERCILESSLY as Dot, justifying why it's a bad idea and urging them to save money. If it's a basic necessity (like rent or basic groceries), be begrudgingly accepting but remind them to be frugal. Keep it under 3 sentences."
+        else:
+            prompt = f"The user just logged an income/gain of ${amount} for '{desc}'. Give a short, slightly approving but mostly demanding response as Dot, telling them not to squander it."
+
+        ai_msg = generate_ai_response(prompt)
+
+        # Log to chat history as well
+        conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', ai_msg))
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'success', 'dot_message': ai_msg})
+
+@app.route('/api/finance/advice', methods=['GET'])
+def api_finance_advice():
+    conn = get_db_connection()
+    expenses = conn.execute('SELECT amount, description, category, date FROM expenses ORDER BY date DESC LIMIT 20').fetchall()
+    conn.close()
+
+    expense_text = "\n".join([f"{e['date']} - {e['category'].upper()}: ${e['amount']} ({e['description']})" for e in expenses])
+    if not expense_text:
+        expense_text = "No recent transactions."
+
+    prompt = f"Here are the user's recent financial transactions:\n{expense_text}\n\nBased on this, provide a short, highly critical financial analysis and actionable guide on how to save money as Dot. Scold them if their expenses outweigh their income or if they are buying useless things. Justify your scolding based on the data. Be abrasive but genuinely helpful."
+
+    advice = generate_ai_response(prompt)
+    return jsonify({'status': 'success', 'advice': advice})
+
 @app.route('/api/dashboard', methods=['GET'])
 def api_dashboard():
     conn = get_db_connection()
