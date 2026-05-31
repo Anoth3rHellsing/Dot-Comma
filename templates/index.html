@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.N.O.T.H.E.R.</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="crt-container">
+        <div id="screen">
+            <!-- Boot Screen -->
+            <div id="boot-screen">
+                <p>Initializing A.N.O.T.H.E.R. System...</p>
+                <p>Memory check: 640K OK</p>
+                <p>Loading modules...</p>
+                <p>Establishing neural link with Dot...</p>
+                <p>READY.</p>
+            </div>
+
+            <!-- Main Menu -->
+            <div id="main-menu" class="hidden">
+                <div class="logo">
+                    <!-- SVG Gear/Factory abstract placeholder -->
+                    <svg width="100" height="100" viewBox="0 0 100 100" fill="none" stroke="#ffcc00" stroke-width="2">
+                        <circle cx="50" cy="50" r="30"/>
+                        <path d="M50 10 L50 20 M50 80 L50 90 M10 50 L20 50 M80 50 L90 50 M22 22 L29 29 M71 71 L78 78 M22 78 L29 71 M71 29 L78 22" />
+                        <rect x="35" y="35" width="30" height="30" fill="transparent" stroke="#008080"/>
+                    </svg>
+                    <div class="logo-text">A.N.O.T.H.E.R.</div>
+                    <div class="stripes">
+                        <div class="stripe-red"></div>
+                        <div class="stripe-teal"></div>
+                        <div class="stripe-gold"></div>
+                    </div>
+                </div>
+                <h2>MAIN DIRECTORY</h2>
+                <ul class="menu">
+                    <li onclick="navigate('scrum')">[1] DAILY SCRUM</li>
+                    <li onclick="navigate('tasks')">[2] MEDIUM TASKS</li>
+                    <li onclick="navigate('routines')">[3] ROUTINE / TAMAGOTCHI</li>
+                    <li onclick="navigate('settings')">[4] SYSTEM SETTINGS</li>
+                </ul>
+                <p>Type choice or click option to proceed.</p>
+            </div>
+
+            <!-- Section Placeholders -->
+            <div id="scrum-section" class="hidden section">
+                <h2>[1] DAILY SCRUM</h2>
+                <p>15-minute daily stand-up. Inspect progress. Adapt workflow.</p>
+
+                <form id="scrum-form">
+                    <label>1. What did I do yesterday that helped meet the Sprint Goal?</label><br>
+                    <textarea id="scrum-yesterday" rows="3" style="width: 80%;"></textarea><br><br>
+
+                    <label>2. What will I do today to help meet this Sprint Goal?</label><br>
+                    <textarea id="scrum-today" rows="3" style="width: 80%;"></textarea><br><br>
+
+                    <label>3. Are there any impediments preventing me or the team from achieving this goal?</label><br>
+                    <textarea id="scrum-impediments" rows="3" style="width: 80%;"></textarea><br><br>
+
+                    <button type="submit">SUBMIT REPORT</button>
+                </form>
+
+                <div id="scrum-feedback" style="margin-top: 20px; color: #ffcc00; font-style: italic;"></div>
+
+                <br>
+                <button onclick="navigate('main-menu')">BACK [0]</button>
+            </div>
+
+            <div id="tasks-section" class="hidden section">
+                <h2>[2] MEDIUM TASKS</h2>
+                <div id="task-layout" style="display: flex; gap: 20px; height: 60vh;">
+                    <!-- Left: Task List -->
+                    <div id="task-list-container" style="flex: 1; border: 1px solid #00ff00; padding: 10px; overflow-y: auto;">
+                        <h3>TASK LIST</h3>
+                        <ul id="task-list" class="menu" style="font-size: 1rem;"></ul>
+                        <form id="new-task-form" style="margin-top: 20px;">
+                            <input type="text" id="new-task-title" placeholder="Task Title" required style="width: 90%;"><br>
+                            <textarea id="new-task-desc" placeholder="Task Description" rows="2" style="width: 90%;"></textarea><br>
+                            <button type="submit">ADD TASK</button>
+                        </form>
+                    </div>
+
+                    <!-- Right: Task Details & Focus Mode -->
+                    <div id="task-details-container" style="flex: 2; border: 1px solid #00ff00; padding: 10px; display: flex; flex-direction: column;">
+                        <div id="task-info">
+                            <h3 id="detail-title">Select a Task</h3>
+                            <p id="detail-desc">...</p>
+                            <button id="focus-btn" class="hidden">ENTER FOCUS MODE</button>
+                            <button id="complete-btn" class="hidden">MARK COMPLETE</button>
+                        </div>
+
+                        <!-- Focus Mode UI -->
+                        <div id="focus-ui" class="hidden" style="margin-top: 20px; border-top: 1px dashed #00ff00; padding-top: 10px; flex: 1; display: flex; flex-direction: column;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3>FOCUS MODE</h3>
+                                <div id="chronometer" style="font-size: 2rem; font-weight: bold; color: #ffcc00;">00:00</div>
+                            </div>
+                            <div id="chat-box" style="flex: 1; border: 1px solid #008080; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 0.9rem;">
+                                [DOT]: Time to focus. Tell me what you're stuck on, or just get to work.
+                            </div>
+                            <form id="chat-form" style="display: flex;">
+                                <input type="text" id="chat-input" placeholder="Ask Dot for help..." style="flex: 1;">
+                                <button type="submit">SEND</button>
+                            </form>
+                            <button id="exit-focus-btn" style="margin-top: 10px;">EXIT FOCUS</button>
+                        </div>
+                    </div>
+                </div>
+                <br>
+                <button onclick="navigate('main-menu')">BACK [0]</button>
+            </div>
+
+            <div id="routines-section" class="hidden section">
+                <h2>[3] ROUTINE / TAMAGOTCHI</h2>
+                <div style="display: flex; gap: 20px;">
+                    <!-- Left: Routines -->
+                    <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; height: 60vh; overflow-y: auto;">
+                        <h3>DAILY ROUTINES</h3>
+                        <ul id="routine-list" style="list-style-type: none; padding: 0;"></ul>
+
+                        <form id="new-routine-form" style="margin-top: 20px; border-top: 1px dashed #00ff00; padding-top: 10px;">
+                            <input type="text" id="new-routine-title" placeholder="Routine Title" required style="width: 90%;"><br>
+                            <button type="submit">ADD ROUTINE</button>
+                        </form>
+                    </div>
+
+                    <!-- Right: Tamagotchi -->
+                    <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                        <h3>TAMAGOTCHI STATUS</h3>
+                        <pre id="cat-ascii" style="font-size: 1.5rem; color: #ffcc00; margin: 20px 0;">
+ /\_/\
+( o.o )
+ > ^ <
+                        </pre>
+                        <div style="text-align: left; margin-left: 20%;">
+                            <p>Health: <span id="tama-hp">100</span>%</p>
+                            <p>Happiness: <span id="tama-happy">100</span>%</p>
+                            <p>Cleanliness: <span id="tama-clean">100</span>%</p>
+                        </div>
+                        <p id="routine-dot-msg" style="color: #008080; font-style: italic; margin-top: 20px;"></p>
+                    </div>
+                </div>
+                <br>
+                <button onclick="navigate('main-menu')">BACK [0]</button>
+            </div>
+
+            <div id="settings-section" class="hidden section">
+                <h2>[4] SYSTEM SETTINGS</h2>
+                <form id="settings-form">
+                    <label>OpenAI API Key:</label><br>
+                    <input type="password" id="openai-key" style="width: 300px;"><br><br>
+
+                    <label>Gemini API Key:</label><br>
+                    <input type="password" id="gemini-key" style="width: 300px;"><br><br>
+
+                    <label>DeepSeek API Key:</label><br>
+                    <input type="password" id="deepseek-key" style="width: 300px;"><br><br>
+
+                    <label>Active Provider:</label><br>
+                    <select id="active-provider">
+                        <option value="openai">OpenAI</option>
+                        <option value="gemini">Gemini</option>
+                        <option value="deepseek">DeepSeek</option>
+                    </select><br><br>
+
+                    <button type="submit">SAVE SETTINGS</button>
+                </form>
+                <br>
+                <button onclick="navigate('main-menu')">BACK [0]</button>
+            </div>
+
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
