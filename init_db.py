@@ -1,25 +1,25 @@
 import sqlite3
+import db_utils
 
 def init_db():
-    conn = sqlite3.connect('database.db')
+    conn = db_utils.get_db_connection()
     c = conn.cursor()
 
     # Settings table
     c.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            openai_key TEXT,
-            gemini_key TEXT,
             deepseek_key TEXT,
-            openrouter_key TEXT,
-            active_provider TEXT DEFAULT 'openai'
+            first_run BOOLEAN DEFAULT 1,
+            motd TEXT,
+            motd_time DATETIME
         )
     ''')
 
     # Ensure at least one settings row exists
     c.execute('SELECT COUNT(*) FROM settings')
     if c.fetchone()[0] == 0:
-        c.execute('INSERT INTO settings (active_provider) VALUES ("openai")')
+        c.execute('INSERT INTO settings (first_run) VALUES (1)')
 
     # Chat History table
     c.execute('''
@@ -82,4 +82,4 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
-    print("Database initialized successfully.")
+    print(f"Database initialized successfully at {db_utils.get_db_path()}")

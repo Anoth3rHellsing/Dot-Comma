@@ -1,22 +1,18 @@
 import os
-from flask import Flask, render_template
+import datetime
+from flask import Flask, render_template, request, jsonify
+import sqlite3
+import db_utils
+from ai_provider import generate_ai_response
 
 app = Flask(__name__)
 
-import sqlite3
-from flask import request, jsonify
-
 def get_db_connection():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+    return db_utils.get_db_connection()
 
 @app.route('/')
 def index():
     return render_template('index.html')
-
-from ai_provider import generate_ai_response
-import datetime
 
 @app.route('/api/scrum', methods=['GET', 'POST'])
 def api_scrum():
@@ -151,9 +147,9 @@ def api_settings():
         data = request.json
         conn.execute('''
             UPDATE settings
-            SET openai_key = ?, gemini_key = ?, deepseek_key = ?, openrouter_key = ?, active_provider = ?
+            SET deepseek_key = ?
             WHERE id = 1
-        ''', (data.get('openai_key'), data.get('gemini_key'), data.get('deepseek_key'), data.get('openrouter_key'), data.get('active_provider')))
+        ''', (data.get('deepseek_key'),))
         conn.commit()
         conn.close()
         return jsonify({'status': 'success'})
@@ -163,6 +159,61 @@ def api_settings():
         if settings:
             return jsonify(dict(settings))
         return jsonify({})
+
+@app.route('/api/finish_intro', methods=['POST'])
+def api_finish_intro():
+    conn = get_db_connection()
+    conn.execute('UPDATE settings SET first_run = 0 WHERE id = 1')
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/dashboard', methods=['GET'])
+def api_dashboard():
+    conn = get_db_connection()
+    settings = conn.execute('SELECT * FROM settings WHERE id = 1').fetchone()
+
+    first_run = bool(settings['first_run']) if settings and settings['first_run'] is not None else True
+
+    # Check if MOTD needs updating (every hour)
+    current_time = datetime.datetime.now()
+    motd_time_str = settings['motd_time'] if settings else None
+    motd_time = datetime.datetime.fromisoformat(motd_time_str) if motd_time_str else None
+
+    motd = settings['motd'] if settings else None
+
+    if not motd or not motd_time or (current_time - motd_time).total_seconds() > 3600:
+        if settings and settings['deepseek_key']:
+            motd = generate_ai_response("Provide a random 'Message of the Hour' that is funny, slightly snarky, and motivational. Keep it under 2 sentences.")
+        else:
+            motd = "[System]: Please configure your DeepSeek API key in System Settings to enable Dot's motivational messages."
+
+        conn.execute('UPDATE settings SET motd = ?, motd_time = ? WHERE id = 1', (motd, current_time.isoformat()))
+        conn.commit()
+
+    # Calculate stats
+    total_tasks = conn.execute('SELECT COUNT(*) FROM medium_tasks').fetchone()[0]
+    completed_tasks = conn.execute("SELECT COUNT(*) FROM medium_tasks WHERE status = 'done'").fetchone()[0]
+
+    total_routines = conn.execute('SELECT COUNT(*) FROM routine_tasks').fetchone()[0]
+    completed_routines = conn.execute('SELECT COUNT(*) FROM routine_tasks WHERE done_today = 1').fetchone()[0]
+
+    scrum_count = conn.execute('SELECT COUNT(*) FROM scrum_entries').fetchone()[0]
+
+    tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+
+    conn.close()
+
+    return jsonify({
+        'first_run': first_run,
+        'motd': motd,
+        'stats': {
+            'tasks': {'total': total_tasks, 'completed': completed_tasks},
+            'routines': {'total': total_routines, 'completed': completed_routines},
+            'scrum_count': scrum_count
+        },
+        'tamagotchi': dict(tama) if tama else {}
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
