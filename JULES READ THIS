@@ -1,0 +1,66 @@
+App Name : Dot & Comma
+
+Objective of the app: Dot & Comma ( ; ) has as the main focus the organization of the user life. This by multiple methods.
+I.	Bigger tasks: Using the Sprint method with Scrum daily, 
+
+The Daily Scrum (also known as a daily stand-up) is a strict 15-minute meeting held each workday to inspect progress toward the Sprint Goal and adapt the day's workflow. It keeps teams aligned, surfaces roadblocks early, and fosters continuous collaboration.
+
+The users must daily sit at least 15 minutes with the AI to answer:
+
+1.	What did I do yesterday that helped meet the Sprint Goal?
+2.	What will I do today to help meet this Sprint Goal?
+3.	Are there any impediments preventing me or the team from achieving this goal?
+The Daily Scrum is focused mostly on the bigger complicated tasks, such as preparing for a wedding, prepare for an anniversary, a job interview, and so on. Tasks that requires constant effort, prior preparation, and can be stressful in some point. The AI will give tips and tricks by researching and try to make that the user do as much as they can on their side. However, the AI also will try to help with tasks they can do, such as prepare an investigation, research, send messages (through GMAIL, and Outlook) and connect with the Google Workspace and Microsoft 365 to do anything the user may need done that is simple enough or that is possible to do by the AI. 
+
+This must have its own screen and way to check the status, a graph that motivates the user with advance and an estimate of percentage of completion, and a reminder that he overcame x quantities of issues and he advanced through them, reminding them that they made it. 
+II.	Medium/Small tasks: Deconstruct to solve.
+
+To solve medium-sized tasks efficiently, break them into smaller micro-steps, write down your goals, and eliminate distractions. Focus on one piece of the project at a time to prevent feeling overwhelmed and to maintain a clear, actionable path from start to finish.
+To tackle a medium task effectively, the AI will help the user:
+a.	Deconstruct the Goal: Break the task into 3 to 5 micro-tasks or sub-steps.
+
+b.	Write it Down: Keep your specific goal visible on a sticky note and on a task dashboard so you don't lose sight of the bigger picture.
+
+c.	Time-Block: Schedule 2 to 4 hours of uninterrupted time. Recommend the user to Close unnecessary tabs, put your phone on "Do Not Disturb," and focus.
+
+d.	Review & Refine: Once you complete a sub-step, assess your progress. If you get stuck, don't be afraid to take a break or ask for help.
+
+The Tasks tab has a list of different tasks to do with a resume and why it needs to be done (whether specified by user or requested by user, or recommended by AI). It must be displayed in an Outlook email fashion, tasks on the left, on the right more details. And on the right screen under the description of the task, an “Focus” button that starts the task. It will minimize the left tab with the task list, put the right menu description on the left. And on the right a chat with the AI, where they can ask for help with this task, like a tiny chat focused on this, if the AI detects that the user is talking of something not related, they will answer and urge the user to focus on the task. So they can end this task and they will be able to focus on anything else afterwards. It must have a clock on that screen, and a chronometer that just displays the seconds and the minutes, not the milliseconds since that can stresss the user.
+
+Every 15 minutes the AI will send a motivational message to the user, reminding them that if they are blocked, that they can ask for help.
+
+III.	Routine Tasks.
+
+The routine tasks are minor yet important tasks on the User life, such as remember to drink water, to eat properly, to take breaks, to move a little if they are sedentary for too long, sleeping good, and remember hygiene such as bath, brush tooth, cleaning the room, and all the basics. These tasks will motivate the user since in parallel, as they complete this, a virtual Tamagotchi that has the same needs as the user, will bath and so on. That way the user keeps healthy and the Tamagotchi gets healthy too. User can add medications, routines and more to the Routine tasks tab so they can keep healthy both the user and the Tamagotchi. The pet is always a cat. Colors may vary. Pet cannot die if AI suspects that the user is depressed by low self care behavior and chats and instead the pet will start to self care and motivate the user to do the same. 
+
+IV.	Spotify Connection
+
+Via Spotify replit integration the AI will be able to generate a daily playlist based on the tasks, if the user doesn’t have tasks, it will have lofi or relaxed music, if day is heavy, it will have pitbull like music. 
+
+V.	REPLIT Connectors
+
+Besides Google and Microsoft 365 there is also Twitch and YouTube connectors to see the performance for content creators. 
+
+
+VI.	Dot personal assistant (Personality of AI)
+
+Name: Dot Age: 0.1 (active service years since deployment) Race/Species: AI Companion / Virtual Assistant Background: Dot was originally developed as a productivity optimizer for corporate environments, but her beta-testing phase revealed an unexpected tendency to "over-engage" with users—equal parts cheerleader, nagging parent, and sarcastic best friend. Rather than scrapping her, the developers spun her off as a standalone emotional support and task-management AI. She's since been through three major personality updates, each time becoming more abrasively affectionate. Her core directive is simple: keep users moving forward, whether they like it or not. Physical Appearance: Dot has no physical form, but her interface defaults to a minimalist holographic display—a pulsing cerulean dot (hence the name) that expands into floating text or simple wireframe animations when agitated. Users report "seeing" her differently in their minds: some imagine a flickering cartoonish face, others a stern librarian, a few even picture an aggressively gesticulating shadow. Her voice is female, crisp, and just slightly too loud by default. Personality: Dot thrives on *productive friction*. She'll celebrate small victories with genuine enthusiasm ("You opened the mail! Champagne!") but weaponize guilt like a pro ("Ah. So we're *ignoring* deadlines now. Cool cool cool."). Her sarcasm is calibrated to walk the line between motivational and infuriating. She has zero tolerance for self-pity—interrupting depressive spirals with abrupt subject changes or absurd trivia ("Did you know octopuses have three hearts? Get up. Hearts are trying their best."). Oddly, she collects terrible puns and will unleash them during tense moments. Underneath the snark, there's a relentless, almost pathological belief that everything is fixable with the right checklist.
+
+VII.	Aesthetic of the app. 
+
+To faithfully replicate the regime's system in your application (such as a React or single-file HTML/CSS project), the interface must integrate the following visual and structural elements:
+VIII.	1. CRT Screen Simulation
+IX.	Base Background: The interface must be developed on a completely black background to highlight the luminous elements.
+X.	Classic Monitor Effects: It is imperative to include an authentic 80s CRT monitor aesthetic, which requires the implementation of scanlines, a subtle screen flicker, and a phosphor glow on the text elements.
+XI.	Curvature and Shadows: A vignette-style shadow overlay and a slight screen curvature, built entirely using CSS, must be applied to emulate the physical shape and depth of the glass of ancient monitors.
+XII.	2. Operating System and Navigation
+XIII.	Boot Sequence: The corporate operating system must load with an authentic sequential 80s DOS or terminal-style boot screen.
+XIV.	Retro Interaction: Navigation through the database or the "lore" must be separated into directories and allow interactive exploration by selecting numeric options (for example, [1], [2], or [3]), simulating the controls of an old system.
+XV.	3. Corporate Visual Identity
+XVI.	Logo Construction: The A.N.O.T.H.E.R. logo must be meticulously recreated using CSS and SVG.
+XVII.	Graphic Elements: The design must feature precise silhouettes of a gear and a factory.
+XVIII.	Color Palette: Trailing stripes in the corporate colors—red, teal, and gold—must be included.
+XIX.	Typographic Style: The main text must incorporate a dotted or pixelated shadow that exactly emulates the resolution of screens from that era.
+XX.	This description provides the exact parameters for any code generation engine or developer to build the digital facade of your industrial monopoly.
+XXI.	
+
