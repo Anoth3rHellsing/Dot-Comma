@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A.N.O.T.H.E.R.</title>
+    <title>D.O.T.</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -21,18 +21,7 @@
             <!-- Main Menu -->
             <div id="main-menu" class="hidden">
                 <div class="logo">
-                    <!-- SVG Gear/Factory abstract placeholder -->
-                    <svg width="100" height="100" viewBox="0 0 100 100" fill="none" stroke="#ffcc00" stroke-width="2">
-                        <circle cx="50" cy="50" r="30"/>
-                        <path d="M50 10 L50 20 M50 80 L50 90 M10 50 L20 50 M80 50 L90 50 M22 22 L29 29 M71 71 L78 78 M22 78 L29 71 M71 29 L78 22" />
-                        <rect x="35" y="35" width="30" height="30" fill="transparent" stroke="#008080"/>
-                    </svg>
-                    <div class="logo-text">A.N.O.T.H.E.R.</div>
-                    <div class="stripes">
-                        <div class="stripe-red"></div>
-                        <div class="stripe-teal"></div>
-                        <div class="stripe-gold"></div>
-                    </div>
+                    <div class="dot-logo"></div>
                 </div>
                 <h2>MAIN DIRECTORY</h2>
                 <ul class="menu">
@@ -40,6 +29,7 @@
                     <li onclick="navigate('tasks')">[2] MEDIUM TASKS</li>
                     <li onclick="navigate('routines')">[3] ROUTINE / TAMAGOTCHI</li>
                     <li onclick="navigate('settings')">[4] SYSTEM SETTINGS</li>
+                    <li onclick="navigate('dot-chat')">[5] TALK WITH DOT</li>
                 </ul>
                 <p>Type choice or click option to proceed.</p>
             </div>
@@ -175,8 +165,22 @@
                 <button onclick="navigate('main-menu')">BACK [0]</button>
             </div>
 
+            <div id="dot-chat-section" class="hidden section">
+                <h2>[5] TALK WITH DOT</h2>
+                <div id="general-chat-box" style="height: 50vh; border: 1px solid #00ff00; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 1rem;">
+                </div>
+                <form id="general-chat-form" style="display: flex;">
+                    <input type="text" id="general-chat-input" placeholder="Type a message to Dot..." style="flex: 1; padding: 10px; font-size: 1rem;" required>
+                    <button type="submit" style="padding: 10px;">SEND</button>
+                </form>
+                <br>
+                <button onclick="navigate('main-menu')">BACK [0]</button>
+            </div>
+
         </div>
     </div>
+    <div id="notification-toast" class="hidden"></div>
+    <div id="copyright">&copy; A.N.O.T.H.E.R.</div>
     <script src="/static/script.js"></script>
 </body>
 </html>

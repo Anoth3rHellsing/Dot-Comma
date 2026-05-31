@@ -21,6 +21,16 @@ def init_db():
     if c.fetchone()[0] == 0:
         c.execute('INSERT INTO settings (active_provider) VALUES ("openai")')
 
+    # Chat History table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT,
+            message TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Scrum answers table
     c.execute('''
         CREATE TABLE IF NOT EXISTS scrum_entries (

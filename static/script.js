@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (e.key === '2') navigate('tasks');
             if (e.key === '3') navigate('routines');
             if (e.key === '4') navigate('settings');
+            if (e.key === '5') navigate('dot-chat');
         } else {
             if (e.key === '0') navigate('main-menu');
         }
@@ -34,8 +35,22 @@ function navigate(section) {
             loadTasks();
         } else if (section === 'routines') {
             loadRoutines();
+        } else if (section === 'dot-chat') {
+            loadGeneralChat();
         }
     }
+}
+
+function showNotification(msg) {
+    const toast = document.getElementById('notification-toast');
+    if (!toast) return;
+    toast.innerText = "[DOT]: " + msg;
+    toast.classList.remove('hidden');
+    toast.style.opacity = 1;
+    setTimeout(() => {
+        toast.style.opacity = 0;
+        setTimeout(() => toast.classList.add('hidden'), 500);
+    }, 5000);
 }
 
 async function loadRoutines() {
@@ -143,7 +158,7 @@ document.getElementById('new-task-form')?.addEventListener('submit', async (e) =
         body: JSON.stringify(data)
     });
     const result = await res.json();
-    if(result.dot_message) alert(result.dot_message);
+    if(result.dot_message) showNotification(result.dot_message);
     document.getElementById('new-task-title').value = '';
     document.getElementById('new-task-desc').value = '';
     loadTasks();
@@ -282,4 +297,49 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
         body: JSON.stringify(data)
     });
     alert('Settings Saved.');
+});
+
+// General Chat Logic
+async function loadGeneralChat() {
+    const res = await fetch('/api/general_chat');
+    const history = await res.json();
+    const box = document.getElementById('general-chat-box');
+    box.innerHTML = '';
+    history.forEach(msg => {
+        appendGeneralChat(msg.sender, msg.message);
+    });
+}
+
+function appendGeneralChat(sender, text) {
+    const box = document.getElementById('general-chat-box');
+    const div = document.createElement('div');
+    if (sender === 'Dot') {
+        div.className = 'message-dot';
+        div.innerText = "[DOT]: " + text;
+    } else {
+        div.className = 'message-user';
+        div.innerText = "YOU: " + text;
+    }
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+
+document.getElementById('general-chat-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('general-chat-input');
+    const msg = input.value;
+    if (!msg) return;
+
+    appendGeneralChat('User', msg);
+    input.value = '';
+
+    const res = await fetch('/api/general_chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+        appendGeneralChat('Dot', result.response);
+    }
 });

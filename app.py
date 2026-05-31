@@ -58,6 +58,7 @@ def api_tasks():
         prompt = f"The user just added a new task: '{title}'. Description: '{desc}'. Give a one sentence sarcastic but slightly motivating response."
         ai_msg = generate_ai_response(prompt)
 
+        conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', ai_msg))
         conn.execute('INSERT INTO medium_tasks (title, description) VALUES (?, ?)', (title, desc))
         conn.commit()
         conn.close()
@@ -107,7 +108,8 @@ def api_routines():
 
         # Optionally, get a Dot response if health is low, etc (skipped for simplicity, keeping it positive here)
         msg = generate_ai_response("The user just completed a routine task and fed their virtual cat. Give a very short, begrudgingly proud response as Dot.")
-
+        conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', msg))
+        conn.commit()
         conn.close()
         return jsonify({'status': 'success', 'dot_message': msg})
 
@@ -121,6 +123,26 @@ def api_chat():
 
     response = generate_ai_response(prompt)
     return jsonify({'response': response})
+
+@app.route('/api/general_chat', methods=['GET', 'POST'])
+def api_general_chat():
+    conn = get_db_connection()
+    if request.method == 'GET':
+        history = conn.execute('SELECT * FROM chat_history ORDER BY id ASC').fetchall()
+        conn.close()
+        return jsonify([dict(h) for h in history])
+    elif request.method == 'POST':
+        data = request.json
+        user_msg = data.get('message')
+        conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('User', user_msg))
+
+        prompt = f"The user says: {user_msg}. Respond as Dot, your abrasive but affectionate AI assistant personality."
+        ai_msg = generate_ai_response(prompt)
+
+        conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', ai_msg))
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'success', 'response': ai_msg})
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 def api_settings():
