@@ -44,7 +44,7 @@ async function loadDashboard() {
     const rPerc = r.total > 0 ? (r.completed / r.total) * 100 : 0;
     document.getElementById('routine-progress').style.width = `${rPerc}%`;
 
-    document.getElementById('scrum-text').innerText = data.stats.scrum_count;
+    document.getElementById('sprint-text').innerText = data.stats.sprint_count;
 
     if (data.tamagotchi) {
         document.getElementById('dash-tama-hp').innerText = data.tamagotchi.health;
@@ -283,40 +283,62 @@ async function loadSettings() {
     const res = await fetch('/api/settings');
     const data = await res.json();
     document.getElementById('deepseek-key').value = data.deepseek_key || '';
+    document.getElementById('context-size').value = data.context_size || 10;
+
+    loadMemory();
 }
 
-document.getElementById('scrum-form')?.addEventListener('submit', async (e) => {
+async function loadMemory() {
+    const res = await fetch('/api/memory');
+    const data = await res.json();
+    const list = document.getElementById('memory-list');
+    list.innerHTML = '';
+
+    data.forEach(m => {
+        const li = document.createElement('li');
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.marginBottom = '5px';
+
+        li.innerHTML = `
+            <span>${m.memory_text}</span>
+            <button onclick="deleteMemory(${m.id})" style="padding: 0 5px; font-size: 0.8em; background-color: var(--corp-red, #800000); color: white;">X</button>
+        `;
+        list.appendChild(li);
+    });
+}
+
+async function deleteMemory(id) {
+    await fetch('/api/memory', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+    loadMemory();
+}
+
+document.getElementById('memory-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const feedbackDiv = document.getElementById('scrum-feedback');
-    feedbackDiv.innerText = "Analyzing response... Analyzing excuses... Please wait.";
-
-    const data = {
-        yesterday: document.getElementById('scrum-yesterday').value,
-        today: document.getElementById('scrum-today').value,
-        impediments: document.getElementById('scrum-impediments').value
-    };
-
-    const res = await fetch('/api/scrum', {
+    const text = document.getElementById('new-memory').value;
+    await fetch('/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({ memory_text: text })
     });
+    document.getElementById('new-memory').value = '';
+    loadMemory();
+});
 
-    const result = await res.json();
-    if (result.status === 'success') {
-        feedbackDiv.innerText = result.feedback;
-        document.getElementById('scrum-yesterday').value = '';
-        document.getElementById('scrum-today').value = '';
-        document.getElementById('scrum-impediments').value = '';
-    } else {
-        feedbackDiv.innerText = "System error logging scrum.";
-    }
+document.getElementById('archive-chats-btn')?.addEventListener('click', async () => {
+    await fetch('/api/archive_chats', { method: 'POST' });
+    showNotification('All current conversations archived successfully.');
 });
 
 document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = {
-        deepseek_key: document.getElementById('deepseek-key').value
+        deepseek_key: document.getElementById('deepseek-key').value,
+        context_size: parseInt(document.getElementById('context-size').value)
     };
 
     await fetch('/api/settings', {
@@ -361,6 +383,93 @@ document.getElementById('general-chat-form')?.addEventListener('submit', async (
     input.value = '';
 
     const res = await fetch('/api/general_chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+        appendGeneralChat('Dot', result.response);
+    }
+});
+
+async function loadSprints() {
+    const res = await fetch('/api/sprints');
+    const data = await res.json();
+    const list = document.getElementById('sprints-list');
+    list.innerHTML = '';
+
+    data.forEach(s => {
+        const div = document.createElement('div');
+        div.style.marginBottom = '15px';
+        div.style.borderBottom = '1px dashed #008080';
+        div.style.paddingBottom = '10px';
+
+        div.innerHTML = `
+            <strong>${s.objective}</strong><br>
+            <small>Start: ${s.start_date} | End: ${s.end_date}</small><br>
+            <span>Progress: <input type="number" min="0" max="100" value="${s.progress}" id="sprint-prog-${s.id}" style="width:50px;">%</span>
+            <button onclick="updateSprint(${s.id})" style="padding: 2px 5px; font-size: 0.8em;">UPDATE</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+async function updateSprint(id) {
+    const prog = document.getElementById(`sprint-prog-${id}`).value;
+    const res = await fetch('/api/sprints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, progress: parseInt(prog) })
+    });
+    const result = await res.json();
+    if(result.status === 'success') {
+        showNotification(result.feedback);
+        loadSprints();
+    }
+}
+
+document.getElementById('sprint-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const feedbackDiv = document.getElementById('sprint-feedback');
+    feedbackDiv.innerText = "Analyzing objective... Please wait.";
+
+    const data = {
+        objective: document.getElementById('sprint-objective').value,
+        start_date: document.getElementById('sprint-start').value,
+        end_date: document.getElementById('sprint-end').value
+    };
+
+    const res = await fetch('/api/sprints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (result.status === 'success') {
+        feedbackDiv.innerText = result.feedback;
+        document.getElementById('sprint-objective').value = '';
+        document.getElementById('sprint-start').value = '';
+        document.getElementById('sprint-end').value = '';
+        loadSprints();
+    } else {
+        feedbackDiv.innerText = "System error creating sprint.";
+    }
+});
+
+document.getElementById('remember-btn')?.addEventListener('click', async () => {
+    const input = document.getElementById('general-chat-input');
+    const msg = input.value;
+    if (!msg) {
+        showNotification("Type what you want me to remember in the chat box first.");
+        return;
+    }
+
+    appendGeneralChat('User', msg + " (Memory Search)");
+    input.value = '';
+
+    const res = await fetch('/api/remember', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg })

@@ -11,6 +11,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             deepseek_key TEXT,
             first_run BOOLEAN DEFAULT 1,
+            context_size INTEGER DEFAULT 10,
             motd TEXT,
             motd_time DATETIME
         )
@@ -27,18 +28,28 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sender TEXT,
             message TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            archived BOOLEAN DEFAULT 0
         )
     ''')
 
-    # Scrum answers table
+    # Sprints table
     c.execute('''
-        CREATE TABLE IF NOT EXISTS scrum_entries (
+        CREATE TABLE IF NOT EXISTS sprints (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            yesterday TEXT,
-            today TEXT,
-            impediments TEXT
+            objective TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            progress INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'active'
+        )
+    ''')
+
+    # Permanent Memory table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS permanent_memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            memory_text TEXT
         )
     ''')
 
