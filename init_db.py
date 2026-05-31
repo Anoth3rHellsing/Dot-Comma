@@ -11,6 +11,7 @@ def init_db():
             openai_key TEXT,
             gemini_key TEXT,
             deepseek_key TEXT,
+            openrouter_key TEXT,
             active_provider TEXT DEFAULT 'openai'
         )
     ''')

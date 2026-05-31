@@ -232,6 +232,7 @@ async function loadSettings() {
     document.getElementById('openai-key').value = data.openai_key || '';
     document.getElementById('gemini-key').value = data.gemini_key || '';
     document.getElementById('deepseek-key').value = data.deepseek_key || '';
+    document.getElementById('openrouter-key').value = data.openrouter_key || '';
     if (data.active_provider) {
         document.getElementById('active-provider').value = data.active_provider;
     }
@@ -271,6 +272,7 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
         openai_key: document.getElementById('openai-key').value,
         gemini_key: document.getElementById('gemini-key').value,
         deepseek_key: document.getElementById('deepseek-key').value,
+        openrouter_key: document.getElementById('openrouter-key').value,
         active_provider: document.getElementById('active-provider').value
     };
 

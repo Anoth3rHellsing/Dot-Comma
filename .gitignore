@@ -1,3 +1,6 @@
 database.db
 flask.log
 __pycache__/
+database.db
+flask.log
+__pycache__/

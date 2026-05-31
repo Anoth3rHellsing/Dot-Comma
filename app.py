@@ -129,9 +129,9 @@ def api_settings():
         data = request.json
         conn.execute('''
             UPDATE settings
-            SET openai_key = ?, gemini_key = ?, deepseek_key = ?, active_provider = ?
+            SET openai_key = ?, gemini_key = ?, deepseek_key = ?, openrouter_key = ?, active_provider = ?
             WHERE id = 1
-        ''', (data.get('openai_key'), data.get('gemini_key'), data.get('deepseek_key'), data.get('active_provider')))
+        ''', (data.get('openai_key'), data.get('gemini_key'), data.get('deepseek_key'), data.get('openrouter_key'), data.get('active_provider')))
         conn.commit()
         conn.close()
         return jsonify({'status': 'success'})
