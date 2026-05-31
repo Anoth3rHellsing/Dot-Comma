@@ -63,6 +63,23 @@ def generate_ai_response(user_prompt):
             )
             return response.choices[0].message.content
 
+        elif provider == 'openrouter':
+            api_key = settings.get('openrouter_key')
+            if not api_key:
+                return "[DOT]: OpenRouter API key is missing. Fix your settings."
+
+            # OpenAI compatible endpoint for OpenRouter
+            client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+            response = client.chat.completions.create(
+                model="openai/gpt-3.5-turbo", # Default fallback model for OpenRouter
+                messages=[
+                    {"role": "system", "content": DOT_PROMPT},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=150
+            )
+            return response.choices[0].message.content
+
         else:
             return "[DOT]: Invalid AI provider selected."
 
