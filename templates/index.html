@@ -59,7 +59,7 @@
                             <span id="routine-text">0/0</span>
                         </div>
                         <div class="stat-row" style="margin-top: 10px;">
-                            <span>Total Daily Scrums: <strong id="scrum-text" style="color: var(--corp-gold, #ffcc00);">0</strong></span>
+                            <span>Total Sprints: <strong id="sprint-text" style="color: var(--corp-gold, #ffcc00);">0</strong></span>
                         </div>
                     </div>
 
@@ -82,7 +82,7 @@
                 </div>
 
                 <ul class="menu" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <li onclick="navigate('scrum')" class="menu-item">[1] DAILY SCRUM</li>
+                    <li onclick="navigate('sprints')" class="menu-item">[1] S.P.R.I.N.T. MENU</li>
                     <li onclick="navigate('tasks')" class="menu-item">[2] MEDIUM TASKS</li>
                     <li onclick="navigate('routines')" class="menu-item">[3] ROUTINE / TAMAGOTCHI</li>
                     <li onclick="navigate('dot-chat')" class="menu-item">[4] TALK WITH DOT</li>
@@ -92,24 +92,33 @@
             </div>
 
             <!-- Section Placeholders -->
-            <div id="scrum-section" class="hidden section">
-                <h2>[1] DAILY SCRUM</h2>
-                <p>15-minute daily stand-up. Inspect progress. Adapt workflow.</p>
+            <div id="sprints-section" class="hidden section">
+                <h2>[1] S.P.R.I.N.T. MENU</h2>
+                <p>Setup objectives, timelines, and track progress.</p>
 
-                <form id="scrum-form">
-                    <label>1. What did I do yesterday that helped meet the Sprint Goal?</label><br>
-                    <textarea id="scrum-yesterday" rows="3" style="width: 80%;"></textarea><br><br>
+                <div style="display: flex; gap: 20px; height: 60vh;">
+                    <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; overflow-y: auto;">
+                        <h3>NEW SPRINT</h3>
+                        <form id="sprint-form">
+                            <label>Sprint Objective:</label><br>
+                            <input type="text" id="sprint-objective" required style="width: 90%;"><br><br>
 
-                    <label>2. What will I do today to help meet this Sprint Goal?</label><br>
-                    <textarea id="scrum-today" rows="3" style="width: 80%;"></textarea><br><br>
+                            <label>Start Date:</label><br>
+                            <input type="date" id="sprint-start" required style="width: 90%;"><br><br>
 
-                    <label>3. Are there any impediments preventing me or the team from achieving this goal?</label><br>
-                    <textarea id="scrum-impediments" rows="3" style="width: 80%;"></textarea><br><br>
+                            <label>End Date:</label><br>
+                            <input type="date" id="sprint-end" required style="width: 90%;"><br><br>
 
-                    <button type="submit">SUBMIT REPORT</button>
-                </form>
+                            <button type="submit">CREATE SPRINT</button>
+                        </form>
+                        <div id="sprint-feedback" style="margin-top: 20px; color: #ffcc00; font-style: italic;"></div>
+                    </div>
 
-                <div id="scrum-feedback" style="margin-top: 20px; color: #ffcc00; font-style: italic;"></div>
+                    <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; overflow-y: auto;">
+                        <h3>ACTIVE SPRINTS</h3>
+                        <div id="sprints-list"></div>
+                    </div>
+                </div>
 
                 <br>
                 <button onclick="navigate('main-menu')">BACK [0]</button>
@@ -200,6 +209,7 @@
                 <form id="general-chat-form" style="display: flex;">
                     <input type="text" id="general-chat-input" placeholder="Type a message to Dot..." style="flex: 1; padding: 10px; font-size: 1rem;" required>
                     <button type="submit" style="padding: 10px;">SEND</button>
+                    <button type="button" id="remember-btn" style="padding: 10px; margin-left: 5px;">DO YOU REMEMBER?</button>
                 </form>
                 <br>
                 <button onclick="navigate('main-menu')">BACK [0]</button>
@@ -207,12 +217,33 @@
 
             <div id="settings-section" class="hidden section">
                 <h2>[5] SYSTEM SETTINGS</h2>
-                <form id="settings-form">
-                    <label>DeepSeek API Key:</label><br>
-                    <input type="password" id="deepseek-key" style="width: 300px;" required><br><br>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1;">
+                        <form id="settings-form">
+                            <label>DeepSeek API Key:</label><br>
+                            <input type="password" id="deepseek-key" style="width: 300px;" required><br><br>
 
-                    <button type="submit">SAVE SETTINGS</button>
-                </form>
+                            <label>Context Size (History to Keep for AI):</label><br>
+                            <input type="number" id="context-size" style="width: 100px;" min="1" max="50" value="10"><br><br>
+
+                            <button type="submit">SAVE SETTINGS</button>
+                        </form>
+                        <hr style="border: 1px solid #008080; margin: 20px 0;">
+                        <h3>LOCAL CHAT ARCHIVE</h3>
+                        <p style="font-size: 0.9em;">Releases old chats from DeepSeek context, storing them locally.</p>
+                        <button id="archive-chats-btn" style="background-color: var(--corp-blue, #000080);">ARCHIVE CURRENT CONVERSATIONS</button>
+                    </div>
+
+                    <div style="flex: 1; border: 1px dashed #00ff00; padding: 10px;">
+                        <h3>PERMANENT MEMORY</h3>
+                        <p style="font-size: 0.8em;">Data here is always sent to Dot (User likes, info, etc).</p>
+                        <form id="memory-form" style="display: flex; gap: 5px; margin-bottom: 10px;">
+                            <input type="text" id="new-memory" placeholder="New memory..." style="flex: 1;" required>
+                            <button type="submit">ADD</button>
+                        </form>
+                        <ul id="memory-list" style="list-style-type: square; padding-left: 20px; font-size: 0.9em;"></ul>
+                    </div>
+                </div>
                 <br>
                 <button onclick="navigate('main-menu')">BACK [0]</button>
             </div>

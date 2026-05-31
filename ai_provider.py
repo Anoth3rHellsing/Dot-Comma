@@ -14,7 +14,7 @@ def get_keys():
     conn.close()
     return dict(settings) if settings else {}
 
-def generate_ai_response(user_prompt):
+def generate_ai_response(user_prompt, additional_system_context=""):
     settings = get_keys()
     api_key = settings.get('deepseek_key')
 
@@ -22,15 +22,19 @@ def generate_ai_response(user_prompt):
         return "[DOT]: DeepSeek API key is missing. Fix your settings."
 
     try:
+        system_content = DOT_PROMPT
+        if additional_system_context:
+            system_content += f"\n\n=== CURRENT SYSTEM CONTEXT ===\n{additional_system_context}"
+
         # OpenAI compatible endpoint for DeepSeek
         client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
-                {"role": "system", "content": DOT_PROMPT},
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=150
+            max_tokens=500
         )
         return response.choices[0].message.content
 
