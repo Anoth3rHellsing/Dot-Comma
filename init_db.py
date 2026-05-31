@@ -88,6 +88,17 @@ def init_db():
     if c.fetchone()[0] == 0:
         c.execute('INSERT INTO tamagotchi (health, happiness, cleanliness) VALUES (100, 100, 100)')
 
+    # Economy & Finance table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            amount REAL,
+            description TEXT,
+            category TEXT,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
