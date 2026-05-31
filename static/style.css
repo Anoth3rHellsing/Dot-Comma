@@ -81,25 +81,20 @@ body {
     margin-bottom: 2rem;
 }
 
-.logo-text {
-    font-size: 3rem;
-    font-weight: bold;
-    letter-spacing: 5px;
-    color: #ffcc00; /* Gold */
-    text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #008080; /* Dotted/pixelated shadow with Red and Teal */
-    text-align: center;
+.dot-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #00aaff; /* Cerulean */
+    box-shadow: 0 0 20px #00aaff, 0 0 40px #00aaff;
+    animation: dot-pulse 2s infinite ease-in-out;
 }
 
-.stripes {
-    display: flex;
-    width: 200px;
-    height: 10px;
-    margin-top: 10px;
+@keyframes dot-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 20px #00aaff, 0 0 40px #00aaff; }
+    50% { transform: scale(1.05); box-shadow: 0 0 30px #00aaff, 0 0 60px #00aaff, 0 0 80px #00aaff; }
+    100% { transform: scale(0.95); box-shadow: 0 0 20px #00aaff, 0 0 40px #00aaff; }
 }
-
-.stripe-red { flex: 1; background-color: #ff0000; box-shadow: 0 0 5px #ff0000;}
-.stripe-teal { flex: 1; background-color: #008080; box-shadow: 0 0 5px #008080;}
-.stripe-gold { flex: 1; background-color: #ffcc00; box-shadow: 0 0 5px #ffcc00;}
 
 ul.menu {
     list-style-type: none;
@@ -124,16 +119,62 @@ ul.menu li:hover {
 /* Common form styles */
 input, textarea, select, button {
     background: transparent;
-    border: 1px solid #00ff00;
+    border: 1px solid rgba(0, 255, 0, 0.6);
     color: #00ff00;
     font-family: 'Courier New', Courier, monospace;
-    padding: 5px;
+    padding: 8px;
     margin: 5px 0;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+    transition: all 0.2s ease;
 }
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border: 1px solid #00ff00;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+}
+
 button {
     cursor: pointer;
+    font-weight: bold;
 }
+
 button:hover {
     background: #00ff00;
     color: black;
+    box-shadow: 0 0 20px #00ff00;
 }
+
+.section {
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.05);
+    padding: 20px;
+    background: rgba(0, 20, 0, 0.4);
+}
+
+#copyright {
+    position: absolute;
+    bottom: 10px;
+    right: 20px;
+    color: #ffcc00;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    z-index: 10;
+}
+
+#notification-toast {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    border: 1px solid #00aaff;
+    background: rgba(0, 30, 50, 0.9);
+    color: #00aaff;
+    padding: 15px;
+    max-width: 300px;
+    box-shadow: 0 0 15px #00aaff;
+    z-index: 100;
+    transition: opacity 0.5s ease;
+}
+
+.message-user { color: #00ff00; margin-bottom: 10px; }
+.message-dot { color: #00aaff; margin-bottom: 15px; text-shadow: 0 0 5px #00aaff; }
