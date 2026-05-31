@@ -1,8 +1,8 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // Simulate boot sequence
-    setTimeout(() => {
+    setTimeout(async () => {
         document.getElementById('boot-screen').classList.add('hidden');
-        document.getElementById('main-menu').classList.remove('hidden');
+        await loadDashboard();
     }, 2000);
 
     // Keyboard navigation mapping
@@ -11,13 +11,55 @@ document.addEventListener("DOMContentLoaded", () => {
             if (e.key === '1') navigate('scrum');
             if (e.key === '2') navigate('tasks');
             if (e.key === '3') navigate('routines');
-            if (e.key === '4') navigate('settings');
-            if (e.key === '5') navigate('dot-chat');
+            if (e.key === '4') navigate('dot-chat');
+            if (e.key === '5') navigate('settings');
         } else {
-            if (e.key === '0') navigate('main-menu');
+            // Only allow 0 to go back if we are not on intro screen
+            if (e.key === '0' && document.getElementById('intro-screen').classList.contains('hidden')) {
+                navigate('main-menu');
+            }
         }
     });
 });
+
+async function loadDashboard() {
+    const res = await fetch('/api/dashboard');
+    const data = await res.json();
+
+    if (data.first_run) {
+        document.getElementById('intro-screen').classList.remove('hidden');
+        return;
+    }
+
+    // Populate dashboard stats
+    document.getElementById('motd-text').innerText = data.motd;
+
+    const t = data.stats.tasks;
+    document.getElementById('task-text').innerText = `${t.completed}/${t.total}`;
+    const tPerc = t.total > 0 ? (t.completed / t.total) * 100 : 0;
+    document.getElementById('task-progress').style.width = `${tPerc}%`;
+
+    const r = data.stats.routines;
+    document.getElementById('routine-text').innerText = `${r.completed}/${r.total}`;
+    const rPerc = r.total > 0 ? (r.completed / r.total) * 100 : 0;
+    document.getElementById('routine-progress').style.width = `${rPerc}%`;
+
+    document.getElementById('scrum-text').innerText = data.stats.scrum_count;
+
+    if (data.tamagotchi) {
+        document.getElementById('dash-tama-hp').innerText = data.tamagotchi.health;
+        document.getElementById('dash-tama-happy').innerText = data.tamagotchi.happiness;
+        document.getElementById('dash-tama-clean').innerText = data.tamagotchi.cleanliness;
+    }
+
+    document.getElementById('main-menu').classList.remove('hidden');
+}
+
+async function finishIntro() {
+    await fetch('/api/finish_intro', { method: 'POST' });
+    document.getElementById('intro-screen').classList.add('hidden');
+    await loadDashboard();
+}
 
 function navigate(section) {
     // Hide all sections and main menu
@@ -26,7 +68,7 @@ function navigate(section) {
 
     // Show requested section
     if (section === 'main-menu') {
-        document.getElementById('main-menu').classList.remove('hidden');
+        loadDashboard(); // Refresh stats when returning to main menu
     } else {
         document.getElementById(`${section}-section`).classList.remove('hidden');
         if (section === 'settings') {
@@ -57,14 +99,12 @@ async function loadRoutines() {
     const res = await fetch('/api/routines');
     const data = await res.json();
 
-    // Update tamagotchi stats
     if (data.tamagotchi) {
         document.getElementById('tama-hp').innerText = data.tamagotchi.health;
         document.getElementById('tama-happy').innerText = data.tamagotchi.happiness;
         document.getElementById('tama-clean').innerText = data.tamagotchi.cleanliness;
     }
 
-    // Update routine list
     const list = document.getElementById('routine-list');
     list.innerHTML = '';
 
@@ -118,7 +158,6 @@ document.getElementById('new-routine-form')?.addEventListener('submit', async (e
     loadRoutines();
 });
 
-// Global state for tasks
 let currentTask = null;
 let timerInterval = null;
 let secondsFocused = 0;
@@ -130,7 +169,7 @@ async function loadTasks() {
     list.innerHTML = '';
 
     tasks.forEach(t => {
-        if (t.status === 'done') return; // Don't show completed tasks in list
+        if (t.status === 'done') return;
         const li = document.createElement('li');
         li.innerText = `> ${t.title}`;
         li.onclick = () => selectTask(t);
@@ -179,7 +218,6 @@ document.getElementById('complete-btn')?.addEventListener('click', async () => {
     loadTasks();
 });
 
-// Focus Mode Logic
 document.getElementById('focus-btn')?.addEventListener('click', () => {
     document.getElementById('task-list-container').style.display = 'none';
     document.getElementById('focus-ui').classList.remove('hidden');
@@ -244,13 +282,7 @@ function appendChat(text, color="#fff") {
 async function loadSettings() {
     const res = await fetch('/api/settings');
     const data = await res.json();
-    document.getElementById('openai-key').value = data.openai_key || '';
-    document.getElementById('gemini-key').value = data.gemini_key || '';
     document.getElementById('deepseek-key').value = data.deepseek_key || '';
-    document.getElementById('openrouter-key').value = data.openrouter_key || '';
-    if (data.active_provider) {
-        document.getElementById('active-provider').value = data.active_provider;
-    }
 }
 
 document.getElementById('scrum-form')?.addEventListener('submit', async (e) => {
@@ -284,11 +316,7 @@ document.getElementById('scrum-form')?.addEventListener('submit', async (e) => {
 document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = {
-        openai_key: document.getElementById('openai-key').value,
-        gemini_key: document.getElementById('gemini-key').value,
-        deepseek_key: document.getElementById('deepseek-key').value,
-        openrouter_key: document.getElementById('openrouter-key').value,
-        active_provider: document.getElementById('active-provider').value
+        deepseek_key: document.getElementById('deepseek-key').value
     };
 
     await fetch('/api/settings', {
@@ -296,10 +324,9 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    alert('Settings Saved.');
+    showNotification('Settings Saved.');
 });
 
-// General Chat Logic
 async function loadGeneralChat() {
     const res = await fetch('/api/general_chat');
     const history = await res.json();

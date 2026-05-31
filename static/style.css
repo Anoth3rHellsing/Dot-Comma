@@ -1,6 +1,13 @@
+:root {
+    --corp-red: #ff3333;
+    --corp-teal: #008080;
+    --corp-gold: #ffcc00;
+    --corp-green: #00ff00;
+}
+
 body {
     background-color: black;
-    color: #00ff00; /* Default phosphor green, but instructions mention red, teal, gold */
+    color: var(--corp-green);
     font-family: 'Courier New', Courier, monospace;
     margin: 0;
     overflow: hidden;
@@ -63,7 +70,7 @@ body {
     box-sizing: border-box;
     overflow-y: auto;
     /* Phosphor glow */
-    text-shadow: 0 0 5px #00ff00;
+    text-shadow: 0 0 5px var(--corp-green);
     animation: flicker 0.15s infinite;
 }
 
@@ -120,7 +127,7 @@ ul.menu li:hover {
 input, textarea, select, button {
     background: transparent;
     border: 1px solid rgba(0, 255, 0, 0.6);
-    color: #00ff00;
+    color: var(--corp-green);
     font-family: 'Courier New', Courier, monospace;
     padding: 8px;
     margin: 5px 0;
@@ -130,7 +137,7 @@ input, textarea, select, button {
 
 input:focus, textarea:focus, select:focus {
     outline: none;
-    border: 1px solid #00ff00;
+    border: 1px solid var(--corp-green);
     box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
 }
 
@@ -140,9 +147,9 @@ button {
 }
 
 button:hover {
-    background: #00ff00;
+    background: var(--corp-green);
     color: black;
-    box-shadow: 0 0 20px #00ff00;
+    box-shadow: 0 0 20px var(--corp-green);
 }
 
 .section {
@@ -156,7 +163,7 @@ button:hover {
     position: absolute;
     bottom: 10px;
     right: 20px;
-    color: #ffcc00;
+    color: var(--corp-gold);
     font-size: 0.8rem;
     opacity: 0.7;
     z-index: 10;
@@ -176,5 +183,48 @@ button:hover {
     transition: opacity 0.5s ease;
 }
 
-.message-user { color: #00ff00; margin-bottom: 10px; }
+.message-user { color: var(--corp-green); margin-bottom: 10px; }
 .message-dot { color: #00aaff; margin-bottom: 15px; text-shadow: 0 0 5px #00aaff; }
+
+/* Dashboard additions */
+.stat-row {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.progress-bar-container {
+    flex: 1;
+    height: 10px;
+    background: #111;
+    border: 1px solid #333;
+    margin: 0 10px;
+    position: relative;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+.progress-bar.red {
+    background-color: var(--corp-red);
+    box-shadow: 0 0 10px var(--corp-red);
+}
+
+.progress-bar.teal {
+    background-color: var(--corp-teal);
+    box-shadow: 0 0 10px var(--corp-teal);
+}
+
+.menu-item {
+    border: 1px dashed rgba(0, 255, 0, 0.3);
+    padding: 10px;
+    text-align: center;
+}
+
+.menu-item:hover {
+    border-color: var(--corp-green);
+    background: rgba(0, 255, 0, 0.1);
+}

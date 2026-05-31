@@ -4,3 +4,5 @@ __pycache__/
 database.db
 flask.log
 __pycache__/
+app_output.log
+__pycache__/
