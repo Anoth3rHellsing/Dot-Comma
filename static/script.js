@@ -89,12 +89,23 @@ function navigate(section) {
 function showNotification(msg) {
     const toast = document.getElementById('notification-toast');
     if (!toast) return;
-    toast.innerText = "[DOT]: " + msg;
-    toast.classList.remove('hidden');
-    toast.style.opacity = 1;
+
+    // Create a new notification element inside the toast container if we want stacking,
+    // or simply append to existing text
+    if (toast.innerText && toast.style.opacity == 1 && !toast.classList.contains('hidden')) {
+        toast.innerHTML += "<br>[DOT]: " + msg;
+    } else {
+        toast.innerHTML = "[DOT]: " + msg;
+        toast.classList.remove('hidden');
+        toast.style.opacity = 1;
+    }
+
     setTimeout(() => {
         toast.style.opacity = 0;
-        setTimeout(() => toast.classList.add('hidden'), 500);
+        setTimeout(() => {
+            toast.classList.add('hidden');
+            toast.innerHTML = '';
+        }, 500);
     }, 5000);
 }
 
@@ -341,7 +352,8 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     e.preventDefault();
     const data = {
         deepseek_key: document.getElementById('deepseek-key').value,
-        context_size: parseInt(document.getElementById('context-size').value)
+        context_size: parseInt(document.getElementById('context-size').value),
+        daily_scrum_time: document.getElementById('scrum-time').value
     };
 
     await fetch('/api/settings', {
