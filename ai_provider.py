@@ -22,7 +22,8 @@ def generate_ai_response(user_prompt, additional_system_context=""):
         return "[DOT]: DeepSeek API key is missing. Fix your settings."
 
     try:
-        system_content = DOT_PROMPT
+        user_name = settings.get('user_name', 'User')
+        system_content = DOT_PROMPT + f"\nThe user's name is {user_name}. Always refer to them by their name when addressing them.\n"
         if additional_system_context:
             system_content += f"\n\n=== CURRENT SYSTEM CONTEXT ===\n{additional_system_context}"
 

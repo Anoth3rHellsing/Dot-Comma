@@ -8,21 +8,15 @@
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 631-326-424
-127.0.0.1 - - [31/May/2026 04:41:26] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:41:26] "GET /static/script.js HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:41:26] "GET /static/style.css HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:41:46] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:41:46] "GET /static/script.js HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:41:46] "GET /static/style.css HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:41:48] "GET /api/dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:42:35] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:42:35] "GET /static/script.js HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:42:35] "GET /static/style.css HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:42:37] "GET /api/dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:43:24] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:43:24] "GET /static/style.css HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:43:24] "GET /static/script.js HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:43:25] "GET /api/settings HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:43:25] "GET /api/memory HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:43:26] "GET /api/dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [31/May/2026 04:43:27] "GET /api/general_chat HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:57:14] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:57:14] "GET /static/script.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:57:14] "GET /static/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:57:16] "GET /api/dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:57:29] "GET /api/notifications HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:59:21] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:59:21] "GET /static/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:59:21] "GET /static/script.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:59:24] "GET /api/dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:59:24] "POST /api/finish_intro HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:59:24] "GET /api/dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 01:59:25] "GET /api/calendar HTTP/1.1" 200 -

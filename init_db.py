@@ -13,7 +13,20 @@ def init_db():
             first_run BOOLEAN DEFAULT 1,
             context_size INTEGER DEFAULT 10,
             motd TEXT,
-            motd_time DATETIME
+            motd_time DATETIME,
+            user_name TEXT DEFAULT 'User'
+        )
+    ''')
+
+    # Calendar Events table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS calendar_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            event_datetime DATETIME,
+            notified_15 BOOLEAN DEFAULT 0,
+            notified_5 BOOLEAN DEFAULT 0,
+            is_scrum BOOLEAN DEFAULT 0
         )
     ''')
 
