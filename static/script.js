@@ -1,9 +1,45 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    // Simulate boot sequence
-    setTimeout(async () => {
-        document.getElementById('boot-screen').classList.add('hidden');
+    // Start clock
+    setInterval(updateClock, 1000);
+    // Check notifications every 15 seconds
+    setInterval(checkNotifications, 15000);
+
+    // Boot Animation Sequence
+    const bootLines = [
+        "Initializing A.N.O.T.H.E.R. System...",
+        "BIOS Date 04/01/89 19:30:24 Ver 1.00",
+        "CPU: Mainframe Processing Unit @ 4.77 MHz",
+        "Memory check: 640K OK",
+        "Loading kernel...",
+        "Mounting /dev/sda1...",
+        "Loading modules: S.P.R.I.N.T., TASKS, ROUTINES...",
+        "Establishing neural link with Dot...",
+        "READY."
+    ];
+
+    const bootContainer = document.getElementById('boot-text-container');
+
+    const playBootAnimation = async () => {
+        for (let i = 0; i < bootLines.length; i++) {
+            const p = document.createElement('p');
+            p.innerText = bootLines[i];
+            p.style.margin = "5px 0";
+            if (bootContainer) bootContainer.appendChild(p);
+            await new Promise(r => setTimeout(r, Math.random() * 200 + 100));
+        }
+        await new Promise(r => setTimeout(r, 500));
+        const bootScreen = document.getElementById('boot-screen');
+        if (bootScreen) bootScreen.classList.add('hidden');
         await loadDashboard();
-    }, 2000);
+    };
+
+    if (bootContainer) {
+        playBootAnimation();
+    } else {
+        const bootScreen = document.getElementById('boot-screen');
+        if (bootScreen) bootScreen.classList.add('hidden');
+        await loadDashboard();
+    }
 
     // Keyboard navigation mapping
     document.addEventListener('keydown', (e) => {
@@ -14,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (e.key === '4') navigate('dot-chat');
             if (e.key === '5') navigate('settings');
             if (e.key === '6') navigate('finance');
+            if (e.key === '7') navigate('calendar');
         } else {
             // Only allow 0 to go back if we are not on intro screen
             if (e.key === '0' && document.getElementById('intro-screen').classList.contains('hidden')) {
@@ -57,7 +94,12 @@ async function loadDashboard() {
 }
 
 async function finishIntro() {
-    await fetch('/api/finish_intro', { method: 'POST' });
+    const nameInput = document.getElementById('intro-username').value || 'User';
+    await fetch('/api/finish_intro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_name: nameInput })
+    });
     document.getElementById('intro-screen').classList.add('hidden');
     await loadDashboard();
 }
@@ -74,6 +116,8 @@ function navigate(section) {
         document.getElementById(`${section}-section`).classList.remove('hidden');
         if (section === 'settings') {
             loadSettings();
+        } else if (section === 'calendar') {
+            loadCalendar();
         } else if (section === 'tasks') {
             loadTasks();
         } else if (section === 'routines') {
@@ -565,3 +609,84 @@ document.getElementById('remember-btn')?.addEventListener('click', async () => {
         appendGeneralChat('Dot', result.response);
     }
 });
+
+function updateClock() {
+    const clockEl = document.getElementById('clock-display');
+    if (clockEl) {
+        const now = new Date();
+        clockEl.innerText = now.toLocaleTimeString('en-US', { hour12: false });
+    }
+}
+
+async function checkNotifications() {
+    try {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        if (data.notifications && data.notifications.length > 0) {
+            const overlay = document.getElementById('notification-overlay');
+            if (!overlay) return;
+            const list = document.getElementById('notification-list');
+            list.innerHTML = '';
+            data.notifications.forEach(n => {
+                const p = document.createElement('p');
+                p.innerText = `[ALERT] ${n.message}`;
+                p.style.color = 'var(--corp-amber)';
+                list.appendChild(p);
+            });
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 10000);
+        }
+    } catch (e) {
+        console.error("Error checking notifications:", e);
+    }
+}
+
+async function loadCalendar() {
+    const res = await fetch('/api/calendar');
+    const events = await res.json();
+
+    const list = document.getElementById('calendar-list');
+    list.innerHTML = '';
+
+    events.forEach(e => {
+        const div = document.createElement('div');
+        div.style.borderBottom = "1px dotted var(--corp-blue)";
+        div.style.marginBottom = "10px";
+        div.innerHTML = `
+            <strong>${e.title}</strong><br>
+            <span style="color: #888;">${new Date(e.event_datetime).toLocaleString()}</span>
+            ${e.is_scrum ? '<span style="color:var(--corp-amber)"> [Daily Scrum]</span>' : ''}
+            <button onclick="deleteEvent(${e.id})" style="float: right; padding: 2px 5px; color: var(--corp-red); border-color: var(--corp-red);">X</button>
+            <div style="clear:both;"></div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+document.getElementById('calendar-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('calendar-title').value;
+    const dt = document.getElementById('calendar-datetime').value;
+    if(!title || !dt) return;
+
+    await fetch('/api/calendar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({title, datetime: dt})
+    });
+
+    document.getElementById('calendar-title').value = '';
+    document.getElementById('calendar-datetime').value = '';
+    loadCalendar();
+});
+
+async function deleteEvent(id) {
+    await fetch('/api/calendar', {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id})
+    });
+    loadCalendar();
+}

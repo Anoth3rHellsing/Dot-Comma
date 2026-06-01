@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, jsonify
 import sqlite3
 import db_utils
 from ai_provider import generate_ai_response
+from init_db import init_db
 
 app = Flask(__name__)
 
@@ -240,8 +241,20 @@ def api_archive_chats():
 
 @app.route('/api/finish_intro', methods=['POST'])
 def api_finish_intro():
+    data = request.json or {}
+    user_name = data.get('user_name', 'User')
     conn = get_db_connection()
-    conn.execute('UPDATE settings SET first_run = 0 WHERE id = 1')
+    conn.execute('UPDATE settings SET first_run = 0, user_name = ? WHERE id = 1', (user_name,))
+
+    # Auto-generate daily scrum event at 10:00 AM for today
+    now = datetime.datetime.now()
+    scrum_dt = datetime.datetime(now.year, now.month, now.day, 10, 0)
+    if scrum_dt < now:
+        scrum_dt += datetime.timedelta(days=1)
+
+    conn.execute('INSERT INTO calendar_events (title, event_datetime, is_scrum) VALUES (?, ?, 1)',
+                 ("Daily Scrum", scrum_dt.isoformat()))
+
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
@@ -349,5 +362,65 @@ def api_dashboard():
         'tamagotchi': dict(tama) if tama else {}
     })
 
+
+@app.route('/api/notifications', methods=['GET'])
+def api_notifications():
+    conn = get_db_connection()
+    now = datetime.datetime.now()
+    notifications = []
+
+    # 15 min warning
+    warning_15 = now + datetime.timedelta(minutes=15)
+    events_15 = conn.execute('''SELECT * FROM calendar_events
+                                WHERE event_datetime > ?
+                                AND event_datetime <= ?
+                                AND notified_15 = 0''',
+                             (now.isoformat(), warning_15.isoformat())).fetchall()
+
+    for e in events_15:
+        notifications.append({"message": f"15 minutes until: {e['title']}"})
+        conn.execute('UPDATE calendar_events SET notified_15 = 1 WHERE id = ?', (e['id'],))
+
+    # 5 min warning
+    warning_5 = now + datetime.timedelta(minutes=5)
+    events_5 = conn.execute('''SELECT * FROM calendar_events
+                               WHERE event_datetime > ?
+                               AND event_datetime <= ?
+                               AND notified_5 = 0''',
+                            (now.isoformat(), warning_5.isoformat())).fetchall()
+
+    for e in events_5:
+        notifications.append({"message": f"5 minutes until: {e['title']}"})
+        conn.execute('UPDATE calendar_events SET notified_5 = 1 WHERE id = ?', (e['id'],))
+
+    conn.commit()
+    conn.close()
+    return jsonify({"notifications": notifications})
+
+@app.route('/api/calendar', methods=['GET', 'POST', 'DELETE'])
+def api_calendar():
+    conn = get_db_connection()
+
+    if request.method == 'GET':
+        events = conn.execute('SELECT * FROM calendar_events ORDER BY event_datetime ASC').fetchall()
+        return jsonify([dict(e) for e in events])
+
+    elif request.method == 'POST':
+        data = request.json
+        title = data.get('title')
+        dt_str = data.get('datetime')
+        conn.execute('INSERT INTO calendar_events (title, event_datetime) VALUES (?, ?)', (title, dt_str))
+        conn.commit()
+        return jsonify({"status": "success"})
+
+    elif request.method == 'DELETE':
+        event_id = request.json.get('id')
+        conn.execute('DELETE FROM calendar_events WHERE id = ?', (event_id,))
+        conn.commit()
+        return jsonify({"status": "deleted"})
+
+    conn.close()
+
 if __name__ == '__main__':
+    init_db()
     app.run(host='0.0.0.0', port=5000, debug=True)

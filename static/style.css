@@ -3,6 +3,10 @@
     --corp-teal: #008080;
     --corp-gold: #ffcc00;
     --corp-green: #00ff00;
+    --corp-magenta: #ff00ff;
+    --corp-cyan: #00ffff;
+    --corp-amber: #ffb000;
+    --corp-blue: #0088ff;
 }
 
 body {

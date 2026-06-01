@@ -7,15 +7,20 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <div id="notification-overlay" class="hidden" style="position: absolute; top: 20px; right: 20px; border: 2px solid var(--corp-amber); background: black; padding: 10px; z-index: 9999; box-shadow: 0 0 15px var(--corp-amber);">
+        <h3 style="color: var(--corp-amber); margin-top: 0;">SYSTEM ALERT</h3>
+        <div id="notification-list"></div>
+    </div>
+
+    <div id="clock-display" style="position: absolute; top: 20px; left: 20px; color: var(--corp-cyan); font-size: 1.2em; z-index: 9999; border: 1px solid var(--corp-cyan); padding: 5px; text-shadow: 0 0 5px var(--corp-cyan);">
+        00:00:00
+    </div>
+
     <div id="crt-container">
         <div id="screen">
             <!-- Boot Screen -->
             <div id="boot-screen">
-                <p>Initializing A.N.O.T.H.E.R. System...</p>
-                <p>Memory check: 640K OK</p>
-                <p>Loading modules...</p>
-                <p>Establishing neural link with Dot...</p>
-                <p>READY.</p>
+                <div id="boot-text-container"></div>
             </div>
 
             <!-- Intro Screen -->
@@ -26,6 +31,10 @@
                 <h2>SYSTEM INITIALIZATION PROTOCOL</h2>
                 <div class="message-dot" style="margin-bottom: 20px;">
                     [DOT]: Ah, a new user. Fantastic. I'm Dot, your mandated productivity AI. I'm here to ensure you stop procrastinating and start achieving. We're going to organize your life using the Sprint methodology, break down your tasks, and keep your virtual cat alive. Don't worry, it's going to be grueling, but ultimately rewarding. Before we begin, you need to configure your DeepSeek API Key in the System Settings. Let's get to work.
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="color: var(--corp-cyan);">ENTER YOUR NAME:</label><br>
+                    <input type="text" id="intro-username" placeholder="Your Name" style="width: 250px; background: black; color: var(--corp-cyan); border: 1px solid var(--corp-cyan);">
                 </div>
                 <button onclick="finishIntro()">ACKNOWLEDGE AND PROCEED</button>
             </div>
@@ -88,6 +97,7 @@
                     <li onclick="navigate('dot-chat')" class="menu-item">[4] TALK WITH DOT</li>
                     <li onclick="navigate('settings')" class="menu-item">[5] SYSTEM SETTINGS</li>
                     <li onclick="navigate('finance')" class="menu-item">[6] ECONOMY & FINANCE</li>
+                    <li onclick="navigate('calendar')" class="menu-item" style="color: var(--corp-magenta); border-color: var(--corp-magenta);">[7] CALENDAR</li>
                 </ul>
                 <p style="text-align: center; margin-top: 20px;">Select option to proceed.</p>
             </div>
@@ -214,6 +224,26 @@
                 </form>
                 <br>
                 <button onclick="navigate('main-menu')">BACK [0]</button>
+            </div>
+
+            <div id="calendar-section" class="hidden section">
+                <h2 style="color: var(--corp-magenta);">[7] CALENDAR</h2>
+                <div style="display: flex; gap: 20px; height: 60vh;">
+                    <div style="flex: 1; border: 1px solid var(--corp-blue); padding: 10px; overflow-y: auto;">
+                        <h3 style="color: var(--corp-blue);">UPCOMING EVENTS</h3>
+                        <div id="calendar-list"></div>
+                    </div>
+                    <div style="flex: 1; border: 1px solid var(--corp-magenta); padding: 10px;">
+                        <h3 style="color: var(--corp-magenta);">ADD EVENT</h3>
+                        <form id="calendar-form">
+                            <label style="color: var(--corp-magenta);">Event Title:</label><br>
+                            <input type="text" id="calendar-title" style="width: 90%; background: black; color: var(--corp-magenta); border: 1px solid var(--corp-magenta);"><br><br>
+                            <label style="color: var(--corp-magenta);">Date & Time:</label><br>
+                            <input type="datetime-local" id="calendar-datetime" style="width: 90%; background: black; color: var(--corp-magenta); border: 1px solid var(--corp-magenta);"><br><br>
+                            <button type="submit" style="color: var(--corp-magenta); border-color: var(--corp-magenta);">SCHEDULE EVENT</button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             <div id="settings-section" class="hidden section">
