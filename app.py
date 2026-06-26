@@ -2,7 +2,6 @@ import os
 import re
 import datetime
 from flask import Flask, render_template, request, jsonify
-import sqlite3
 import db_utils
 from ai_provider import generate_ai_response
 from init_db import init_db

@@ -42,8 +42,31 @@
             <!-- Main Menu / Dashboard -->
             <div id="main-menu" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                    <div class="logo" style="margin: 0;">
-                        <div class="dot-logo"></div>
+                    <div class="another-logo" title="A.N.O.T.H.E.R.">
+                        <svg viewBox="0 0 260 90" width="240" height="84" role="img" aria-label="A.N.O.T.H.E.R. corporation">
+                            <!-- trailing corporate stripes: red, teal, gold -->
+                            <rect x="150" y="15" width="110" height="5" fill="#ff3333"/>
+                            <rect x="150" y="23" width="95"  height="5" fill="#008080"/>
+                            <rect x="150" y="31" width="80"  height="5" fill="#ffcc00"/>
+                            <!-- gear -->
+                            <g transform="translate(30,38)">
+                                <g class="gear">
+                                    <circle r="17" fill="none" stroke="#ffcc00" stroke-width="7" stroke-dasharray="5 4"/>
+                                    <circle r="9"  fill="none" stroke="#ffcc00" stroke-width="3"/>
+                                    <circle r="2.5" fill="#ffcc00"/>
+                                </g>
+                            </g>
+                            <!-- factory silhouette -->
+                            <g transform="translate(58,18)" fill="#008080">
+                                <rect x="2" y="4" width="7" height="34"/>
+                                <path d="M14 38 L14 22 L20 16 L20 38 Z M22 38 L22 22 L28 16 L28 38 Z M30 38 L30 22 L36 16 L36 38 Z"/>
+                                <rect x="14" y="36" width="24" height="3"/>
+                                <circle class="smoke" cx="5.5" cy="0" r="2.5" opacity="0.4"/>
+                            </g>
+                            <!-- wordmark -->
+                            <text class="wordmark" x="14" y="72" font-size="20" fill="#ffcc00">A.N.O.T.H.E.R.</text>
+                            <text x="15" y="84" font-size="7" fill="#008080" letter-spacing="1.5">INDUSTRIAL SYSTEMS DIVISION</text>
+                        </svg>
                     </div>
                     <div id="motd-container" style="flex: 1; margin-left: 20px; border: 1px solid #00aaff; padding: 10px; background: rgba(0,30,50,0.5);">
                         <strong style="color: #00aaff;">MESSAGE OF THE HOUR:</strong>

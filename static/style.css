@@ -101,6 +101,45 @@ body {
     animation: dot-pulse 2s infinite ease-in-out;
 }
 
+/* A.N.O.T.H.E.R. corporate logo (CSS + SVG) */
+.another-logo svg {
+    display: block;
+    filter: drop-shadow(0 0 4px rgba(255, 204, 0, 0.4));
+}
+
+.another-logo .gear {
+    transform-origin: center;
+    animation: gear-spin 14s linear infinite;
+}
+
+@keyframes gear-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.another-logo .smoke {
+    animation: smoke-rise 3.5s ease-in-out infinite;
+}
+
+@keyframes smoke-rise {
+    0%   { opacity: 0.15; transform: translateY(0); }
+    50%  { opacity: 0.55; transform: translateY(-3px); }
+    100% { opacity: 0.15; transform: translateY(0); }
+}
+
+.another-logo .wordmark {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+/* Pixelated / dotted typographic shadow that emulates low-res CRT text */
+h2 {
+    text-shadow: 0 0 6px var(--corp-green),
+                 2px 2px 0 rgba(0, 255, 0, 0.25),
+                 3px 3px 0 rgba(0, 255, 0, 0.12);
+}
+
 @keyframes dot-pulse {
     0% { transform: scale(0.95); box-shadow: 0 0 20px #00aaff, 0 0 40px #00aaff; }
     50% { transform: scale(1.05); box-shadow: 0 0 30px #00aaff, 0 0 60px #00aaff, 0 0 80px #00aaff; }

@@ -95,31 +95,37 @@ calendar GET/POST round-trip all return 200.*
     - **Spotify** daily playlist based on task load (lofi vs. "Pitbull-like").
     - **Twitch / YouTube** connectors for content-creator performance.
 
-11. **Corporate visual identity (A.N.O.T.H.E.R. logo) is incomplete.**
-    Spec wants the logo "meticulously recreated using CSS and SVG" with **gear + factory
-    silhouettes** and **trailing red/teal/gold stripes.** Currently there's only a single
-    pulsing cerulean dot. The color variables exist but the logo art does not.
+---
 
-12. **Typographic dotted/pixelated shadow not implemented.**
-    Phosphor glow exists, but the spec's "dotted or pixelated shadow emulating screen
-    resolution" on the main text is not there. Screen curvature is only a `border-radius`,
-    not a true curved/barrel effect.
+## ✅ Phase C — Visual identity (built 2026-06-26)
+
+11. **A.N.O.T.H.E.R. corporate logo (CSS + SVG).** ✅ DONE
+    Inline SVG logo in the main-menu header: a slowly-spinning **gear**, a **factory
+    silhouette** with a sawtooth roof and rising **smoke**, the **A.N.O.T.H.E.R.**
+    wordmark, and **trailing red/teal/gold stripes**. (Dot's pulsing cerulean dot is kept
+    separately as her own avatar.)
+
+12. **Typographic pixelated shadow.** ✅ DONE
+    `h2` headings now carry a stepped/pixelated text-shadow on top of the phosphor glow,
+    emulating low-res CRT text.
+    *Note: screen curvature is still just `border-radius` — a true barrel/curve effect
+    was left out to avoid breaking the flex layout.*
 
 ---
 
 ## 🧹 Polish / cleanup (nice-to-have, not blocking)
 
-13. **`flask.log` is committed to the repo** even though it's listed in `.gitignore`.
-    It was committed before being ignored. → `git rm --cached flask.log`.
+13. **`flask.log` was committed** even though it's listed in `.gitignore`. ✅ FIXED
+    Untracked with `git rm --cached flask.log`.
 
 14. **`debug=True` in `app.run(...)`** — fine for local dev, but should be off for any
-    shared/production deployment (it exposes the Werkzeug debugger).
+    shared/production deployment (it exposes the Werkzeug debugger). *(left as-is — this
+    is a local single-user app)*
 
 15. **DeepSeek API key is stored in plaintext** in the SQLite DB. Acceptable for a
     local single-user app, but worth a note in the README.
 
-16. **Unused import** `import sqlite3` in `init_db.py` (and in `app.py`) — `db_utils`
-    handles connections. Minor.
+16. **Unused import** `import sqlite3` in `init_db.py` and `app.py`. ✅ FIXED — removed.
 
 17. **README says "AI Integration: DeepSeek API"** — consistent with code ✅, just
     confirming the README and `ai_provider.py` agree (they do).
