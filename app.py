@@ -1,7 +1,7 @@
 import os
+import re
 import datetime
 from flask import Flask, render_template, request, jsonify
-import sqlite3
 import db_utils
 from ai_provider import generate_ai_response
 from init_db import init_db
@@ -10,6 +10,70 @@ app = Flask(__name__)
 
 def get_db_connection():
     return db_utils.get_db_connection()
+
+
+# --- Tamagotchi (virtual cat) tuning ---
+TAMA_DECAY_PER_HOUR = {'health': 2, 'happiness': 3, 'cleanliness': 4}
+TAMA_LOW = 20      # self-care floor: the cat can't drop below this, so it never dies
+TAMA_MAX = 100
+TAMA_COLORS = ['gold', 'cyan', 'magenta', 'green', 'red', 'blue']
+
+
+def apply_tamagotchi_decay(conn):
+    """Decay the cat's stats by whole elapsed hours. The cat self-cares before it can
+    die, so no stat ever falls below TAMA_LOW. Returns the (possibly updated) row."""
+    tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+    if not tama:
+        return None
+
+    now = datetime.datetime.now()
+    last_str = tama['last_update']
+    try:
+        last = datetime.datetime.fromisoformat(last_str) if last_str else now
+    except (ValueError, TypeError):
+        last = now
+
+    elapsed_hours = int((now - last).total_seconds() // 3600)
+    if elapsed_hours < 1:
+        return tama  # not yet another full hour; keep the leftover minutes
+
+    new_stats = {}
+    for stat, rate in TAMA_DECAY_PER_HOUR.items():
+        decayed = tama[stat] - rate * elapsed_hours
+        new_stats[stat] = max(TAMA_LOW, min(TAMA_MAX, decayed))
+
+    # advance the clock only by the whole hours we consumed
+    new_last = last + datetime.timedelta(hours=elapsed_hours)
+
+    conn.execute('''UPDATE tamagotchi
+                    SET health = ?, happiness = ?, cleanliness = ?, last_update = ?
+                    WHERE id = 1''',
+                 (new_stats['health'], new_stats['happiness'], new_stats['cleanliness'],
+                  new_last.isoformat(sep=' ', timespec='seconds')))
+    conn.commit()
+    return conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+
+
+def tamagotchi_state(tama):
+    """Mood + a gentle, encouraging message based on the cat's stats."""
+    if not tama:
+        return {'mood': 'unknown', 'message': '', 'avg': 0}
+
+    avg = (tama['health'] + tama['happiness'] + tama['cleanliness']) / 3
+    struggling = min(tama['health'], tama['happiness'], tama['cleanliness']) <= TAMA_LOW
+
+    if struggling:
+        mood = 'struggling'
+        message = ("Your cat is quietly grooming itself and keeping going, even while it's running low. "
+                   "It can't fall apart — and neither can you. Tick off a little self-care and you'll both feel better.")
+    elif avg >= 70:
+        mood = 'happy'
+        message = "Your cat is thriving. Keep it up — both of you."
+    else:
+        mood = 'okay'
+        message = "Your cat is doing alright, but could use some care. A routine or two would help."
+
+    return {'mood': mood, 'message': message, 'avg': round(avg)}
 
 @app.route('/')
 def index():
@@ -85,27 +149,29 @@ def api_tasks():
 def api_routines():
     conn = get_db_connection()
     if request.method == 'GET':
+        tama = apply_tamagotchi_decay(conn)
         routines = conn.execute('SELECT * FROM routine_tasks').fetchall()
-        tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
         conn.close()
         return jsonify({
             'routines': [dict(r) for r in routines],
-            'tamagotchi': dict(tama) if tama else {}
+            'tamagotchi': dict(tama) if tama else {},
+            'pet_state': tamagotchi_state(tama)
         })
     elif request.method == 'POST':
         data = request.json
-        conn.execute('INSERT INTO routine_tasks (title, description, done_today) VALUES (?, ?, 0)',
-                     (data.get('title'), data.get('description', '')))
+        category = data.get('category', 'routine')
+        conn.execute('INSERT INTO routine_tasks (title, description, done_today, category) VALUES (?, ?, 0, ?)',
+                     (data.get('title'), data.get('description', ''), category))
         conn.commit()
         conn.close()
         return jsonify({'status': 'success'})
     elif request.method == 'PUT':
-        # Mark routine as done, boost tamagotchi stats
+        # Mark routine as done, then boost the cat's stats (decay first so the boost is on top of current state)
         data = request.json
         routine_id = data.get('id')
 
+        apply_tamagotchi_decay(conn)
         conn.execute('UPDATE routine_tasks SET done_today = 1 WHERE id = ?', (routine_id,))
-        # Simple tamagotchi stat boost logic
         conn.execute('''
             UPDATE tamagotchi
             SET health = MIN(100, health + 10),
@@ -115,12 +181,13 @@ def api_routines():
         ''')
         conn.commit()
 
-        # Optionally, get a Dot response if health is low, etc (skipped for simplicity, keeping it positive here)
-        msg = generate_ai_response("The user just completed a routine task and fed their virtual cat. Give a very short, begrudgingly proud response as Dot.")
+        tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+
+        msg = generate_ai_response("The user just completed a routine task and cared for their virtual cat. Give a very short, begrudgingly proud response as Dot.")
         conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', msg))
         conn.commit()
         conn.close()
-        return jsonify({'status': 'success', 'dot_message': msg})
+        return jsonify({'status': 'success', 'dot_message': msg, 'pet_state': tamagotchi_state(tama)})
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
@@ -347,7 +414,7 @@ def api_dashboard():
 
     sprint_count = conn.execute('SELECT COUNT(*) FROM sprints').fetchone()[0]
 
-    tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+    tama = apply_tamagotchi_decay(conn)
 
     conn.close()
 
@@ -359,8 +426,24 @@ def api_dashboard():
             'routines': {'total': total_routines, 'completed': completed_routines},
             'sprint_count': sprint_count
         },
-        'tamagotchi': dict(tama) if tama else {}
+        'tamagotchi': dict(tama) if tama else {},
+        'pet_state': tamagotchi_state(tama)
     })
+
+
+@app.route('/api/tamagotchi/color', methods=['POST'])
+def api_tamagotchi_color():
+    conn = get_db_connection()
+    try:
+        tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+        current = tama['color'] if tama and tama['color'] else 'gold'
+        idx = TAMA_COLORS.index(current) if current in TAMA_COLORS else -1
+        new_color = TAMA_COLORS[(idx + 1) % len(TAMA_COLORS)]
+        conn.execute('UPDATE tamagotchi SET color = ? WHERE id = 1', (new_color,))
+        conn.commit()
+        return jsonify({'status': 'success', 'color': new_color})
+    finally:
+        conn.close()
 
 
 @app.route('/api/notifications', methods=['GET'])
@@ -401,25 +484,170 @@ def api_notifications():
 def api_calendar():
     conn = get_db_connection()
 
-    if request.method == 'GET':
-        events = conn.execute('SELECT * FROM calendar_events ORDER BY event_datetime ASC').fetchall()
-        return jsonify([dict(e) for e in events])
+    try:
+        if request.method == 'GET':
+            events = conn.execute('SELECT * FROM calendar_events ORDER BY event_datetime ASC').fetchall()
+            return jsonify([dict(e) for e in events])
 
-    elif request.method == 'POST':
+        elif request.method == 'POST':
+            data = request.json
+            title = data.get('title')
+            dt_str = data.get('datetime')
+            conn.execute('INSERT INTO calendar_events (title, event_datetime) VALUES (?, ?)', (title, dt_str))
+            conn.commit()
+            return jsonify({"status": "success"})
+
+        elif request.method == 'DELETE':
+            event_id = request.json.get('id')
+            conn.execute('DELETE FROM calendar_events WHERE id = ?', (event_id,))
+            conn.commit()
+            return jsonify({"status": "deleted"})
+    finally:
+        conn.close()
+
+@app.route('/api/scrum', methods=['GET', 'POST'])
+def api_scrum():
+    conn = get_db_connection()
+    try:
+        if request.method == 'GET':
+            entries = conn.execute('SELECT * FROM scrum_entries ORDER BY id DESC LIMIT 30').fetchall()
+            impediments = conn.execute('SELECT * FROM impediments ORDER BY resolved ASC, id DESC').fetchall()
+            overcome = conn.execute('SELECT COUNT(*) FROM impediments WHERE resolved = 1').fetchone()[0]
+            return jsonify({
+                'entries': [dict(e) for e in entries],
+                'impediments': [dict(i) for i in impediments],
+                'overcome_count': overcome
+            })
+
+        # POST: log a daily stand-up
         data = request.json
-        title = data.get('title')
-        dt_str = data.get('datetime')
-        conn.execute('INSERT INTO calendar_events (title, event_datetime) VALUES (?, ?)', (title, dt_str))
-        conn.commit()
-        return jsonify({"status": "success"})
+        sprint_id = data.get('sprint_id') or None
+        yesterday = data.get('yesterday', '')
+        today = data.get('today', '')
+        impediments = data.get('impediments', '')
 
-    elif request.method == 'DELETE':
-        event_id = request.json.get('id')
-        conn.execute('DELETE FROM calendar_events WHERE id = ?', (event_id,))
-        conn.commit()
-        return jsonify({"status": "deleted"})
+        sprint_text = ""
+        if sprint_id:
+            s = conn.execute('SELECT * FROM sprints WHERE id = ?', (sprint_id,)).fetchone()
+            if s:
+                sprint_text = f"Sprint goal: {s['objective']} (currently {s['progress']}% complete)."
 
-    conn.close()
+        prompt = (
+            f"This is the user's Daily Scrum stand-up. {sprint_text}\n"
+            f"1) What they did yesterday: {yesterday}\n"
+            f"2) What they'll do today: {today}\n"
+            f"3) Impediments: {impediments or 'None'}\n\n"
+            "Respond as Dot: acknowledge yesterday's progress, sharpen today's plan into something concrete and doable, "
+            "and if there are impediments, give one or two practical tips to get past them. Keep it punchy, under 5 sentences."
+        )
+        feedback = generate_ai_response(prompt)
+
+        conn.execute('''INSERT INTO scrum_entries (sprint_id, yesterday, today, impediments, ai_feedback)
+                        VALUES (?, ?, ?, ?, ?)''',
+                     (sprint_id, yesterday, today, impediments, feedback))
+
+        # Log a real impediment record if the user reported something meaningful
+        imp = (impediments or '').strip()
+        if imp and imp.lower() not in ('none', 'no', 'n/a', 'na', 'nothing', 'none.'):
+            conn.execute('INSERT INTO impediments (sprint_id, description) VALUES (?, ?)', (sprint_id, imp))
+
+        conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', feedback))
+        conn.commit()
+        return jsonify({'status': 'success', 'feedback': feedback})
+    finally:
+        conn.close()
+
+
+@app.route('/api/impediments/resolve', methods=['POST'])
+def api_resolve_impediment():
+    conn = get_db_connection()
+    try:
+        imp_id = request.json.get('id')
+        conn.execute('UPDATE impediments SET resolved = 1 WHERE id = ?', (imp_id,))
+        conn.commit()
+        overcome = conn.execute('SELECT COUNT(*) FROM impediments WHERE resolved = 1').fetchone()[0]
+        msg = generate_ai_response(
+            f"The user just overcame an impediment. They have now overcome {overcome} obstacle(s) in total. "
+            "Give a short, begrudgingly proud one-liner reminding them they made it through and to keep going."
+        )
+        return jsonify({'status': 'success', 'overcome_count': overcome, 'dot_message': msg})
+    finally:
+        conn.close()
+
+
+@app.route('/api/tasks/subtasks', methods=['GET', 'POST', 'PUT'])
+def api_subtasks():
+    conn = get_db_connection()
+    try:
+        if request.method == 'GET':
+            task_id = request.args.get('task_id')
+            subs = conn.execute('SELECT * FROM subtasks WHERE task_id = ? ORDER BY id ASC', (task_id,)).fetchall()
+            return jsonify([dict(s) for s in subs])
+        elif request.method == 'POST':
+            data = request.json
+            conn.execute('INSERT INTO subtasks (task_id, title) VALUES (?, ?)',
+                         (data.get('task_id'), data.get('title')))
+            conn.commit()
+            return jsonify({'status': 'success'})
+        elif request.method == 'PUT':
+            data = request.json
+            conn.execute('UPDATE subtasks SET done = ? WHERE id = ?',
+                         (1 if data.get('done') else 0, data.get('id')))
+            conn.commit()
+            return jsonify({'status': 'success'})
+    finally:
+        conn.close()
+
+
+@app.route('/api/tasks/deconstruct', methods=['POST'])
+def api_deconstruct():
+    conn = get_db_connection()
+    try:
+        task_id = request.json.get('task_id')
+        task = conn.execute('SELECT * FROM medium_tasks WHERE id = ?', (task_id,)).fetchone()
+        if not task:
+            return jsonify({'status': 'error', 'message': 'Task not found.'}), 404
+
+        prompt = (
+            "Break this task into 3 to 5 concrete micro-steps the user can tackle one at a time.\n"
+            f"Task: {task['title']}\nDescription: {task['description'] or 'N/A'}\n\n"
+            "Respond with ONLY the micro-steps, one per line. No numbering, no preamble, no commentary. "
+            "Each step should be a short, actionable phrase."
+        )
+        response = generate_ai_response(prompt)
+
+        # If the AI errored (e.g. missing API key), surface it instead of creating junk steps.
+        if response.strip().startswith('[DOT]'):
+            return jsonify({'status': 'error', 'message': response})
+
+        steps = []
+        for line in response.splitlines():
+            line = re.sub(r'^\s*(\d+[\.\)]|[-*•])\s*', '', line.strip()).strip()
+            if line:
+                steps.append(line)
+        steps = steps[:5]
+
+        for s in steps:
+            conn.execute('INSERT INTO subtasks (task_id, title) VALUES (?, ?)', (task_id, s))
+        conn.commit()
+
+        subs = conn.execute('SELECT * FROM subtasks WHERE task_id = ? ORDER BY id ASC', (task_id,)).fetchall()
+        return jsonify({'status': 'success', 'subtasks': [dict(s) for s in subs]})
+    finally:
+        conn.close()
+
+
+@app.route('/api/focus/nudge', methods=['POST'])
+def api_focus_nudge():
+    data = request.json or {}
+    task = data.get('task') or 'their current task'
+    prompt = (
+        f"The user has been focusing on '{task}' for a while now. Send a short motivational nudge as Dot — "
+        "remind them that if they're blocked they can ask you for help, and push them to keep going. One or two sentences."
+    )
+    msg = generate_ai_response(prompt)
+    return jsonify({'message': msg})
+
 
 if __name__ == '__main__':
     init_db()

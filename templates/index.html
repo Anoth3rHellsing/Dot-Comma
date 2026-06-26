@@ -42,8 +42,31 @@
             <!-- Main Menu / Dashboard -->
             <div id="main-menu" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                    <div class="logo" style="margin: 0;">
-                        <div class="dot-logo"></div>
+                    <div class="another-logo" title="A.N.O.T.H.E.R.">
+                        <svg viewBox="0 0 260 90" width="240" height="84" role="img" aria-label="A.N.O.T.H.E.R. corporation">
+                            <!-- trailing corporate stripes: red, teal, gold -->
+                            <rect x="150" y="15" width="110" height="5" fill="#ff3333"/>
+                            <rect x="150" y="23" width="95"  height="5" fill="#008080"/>
+                            <rect x="150" y="31" width="80"  height="5" fill="#ffcc00"/>
+                            <!-- gear -->
+                            <g transform="translate(30,38)">
+                                <g class="gear">
+                                    <circle r="17" fill="none" stroke="#ffcc00" stroke-width="7" stroke-dasharray="5 4"/>
+                                    <circle r="9"  fill="none" stroke="#ffcc00" stroke-width="3"/>
+                                    <circle r="2.5" fill="#ffcc00"/>
+                                </g>
+                            </g>
+                            <!-- factory silhouette -->
+                            <g transform="translate(58,18)" fill="#008080">
+                                <rect x="2" y="4" width="7" height="34"/>
+                                <path d="M14 38 L14 22 L20 16 L20 38 Z M22 38 L22 22 L28 16 L28 38 Z M30 38 L30 22 L36 16 L36 38 Z"/>
+                                <rect x="14" y="36" width="24" height="3"/>
+                                <circle class="smoke" cx="5.5" cy="0" r="2.5" opacity="0.4"/>
+                            </g>
+                            <!-- wordmark -->
+                            <text class="wordmark" x="14" y="72" font-size="20" fill="#ffcc00">A.N.O.T.H.E.R.</text>
+                            <text x="15" y="84" font-size="7" fill="#008080" letter-spacing="1.5">INDUSTRIAL SYSTEMS DIVISION</text>
+                        </svg>
                     </div>
                     <div id="motd-container" style="flex: 1; margin-left: 20px; border: 1px solid #00aaff; padding: 10px; background: rgba(0,30,50,0.5);">
                         <strong style="color: #00aaff;">MESSAGE OF THE HOUR:</strong>
@@ -105,9 +128,11 @@
             <!-- Section Placeholders -->
             <div id="sprints-section" class="hidden section">
                 <h2>[1] S.P.R.I.N.T. MENU</h2>
-                <p>Setup objectives, timelines, and track progress.</p>
+                <p>Set objectives, run your Daily Scrum, track progress, and crush impediments.</p>
 
-                <div style="display: flex; gap: 20px; height: 60vh;">
+                <div id="overcome-banner" style="border: 1px solid var(--corp-gold); padding: 8px; margin-bottom: 15px; color: var(--corp-gold); text-align: center; text-shadow: 0 0 5px var(--corp-gold); display: none;"></div>
+
+                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
                     <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; overflow-y: auto;">
                         <h3>NEW SPRINT</h3>
                         <form id="sprint-form">
@@ -126,8 +151,31 @@
                     </div>
 
                     <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; overflow-y: auto;">
-                        <h3>ACTIVE SPRINTS</h3>
+                        <h3>ACTIVE SPRINTS &amp; PROGRESS</h3>
                         <div id="sprints-list"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1; border: 1px solid var(--corp-cyan); padding: 10px;">
+                        <h3 style="color: var(--corp-cyan);">DAILY SCRUM &mdash; 15 MIN STAND-UP</h3>
+                        <form id="scrum-form">
+                            <label style="color: var(--corp-cyan);">Link to Sprint (optional):</label><br>
+                            <select id="scrum-sprint" style="width: 92%;"><option value="">&mdash; None &mdash;</option></select><br><br>
+                            <label>1. What did you do yesterday toward the goal?</label><br>
+                            <textarea id="scrum-yesterday" rows="2" style="width: 92%;"></textarea><br>
+                            <label>2. What will you do today?</label><br>
+                            <textarea id="scrum-today" rows="2" style="width: 92%;"></textarea><br>
+                            <label>3. Any impediments in your way?</label><br>
+                            <textarea id="scrum-impediments" rows="2" style="width: 92%;"></textarea><br><br>
+                            <button type="submit">SUBMIT STAND-UP</button>
+                        </form>
+                        <div id="scrum-feedback" style="margin-top: 15px; color: var(--corp-cyan); font-style: italic;"></div>
+                    </div>
+
+                    <div style="flex: 1; border: 1px solid var(--corp-red); padding: 10px; overflow-y: auto; max-height: 50vh;">
+                        <h3 style="color: var(--corp-red);">IMPEDIMENTS</h3>
+                        <div id="impediments-list"></div>
                     </div>
                 </div>
 
@@ -156,6 +204,12 @@
                             <p id="detail-desc">...</p>
                             <button id="focus-btn" class="hidden">ENTER FOCUS MODE</button>
                             <button id="complete-btn" class="hidden">MARK COMPLETE</button>
+
+                            <div id="subtask-area" class="hidden" style="margin-top: 15px; border-top: 1px dashed #008080; padding-top: 10px;">
+                                <h4 style="color: var(--corp-gold); margin: 0 0 5px 0;">MICRO-STEPS</h4>
+                                <ul id="subtask-list" style="list-style: none; padding: 0; font-size: 0.9rem;"></ul>
+                                <button id="deconstruct-btn" style="font-size: 0.8em;">DECONSTRUCT GOAL (ASK DOT FOR 3&ndash;5 STEPS)</button>
+                            </div>
                         </div>
 
                         <!-- Focus Mode UI -->
@@ -188,15 +242,20 @@
                         <ul id="routine-list" style="list-style-type: none; padding: 0;"></ul>
 
                         <form id="new-routine-form" style="margin-top: 20px; border-top: 1px dashed #00ff00; padding-top: 10px;">
-                            <input type="text" id="new-routine-title" placeholder="Routine Title" required style="width: 90%;"><br>
-                            <button type="submit">ADD ROUTINE</button>
+                            <input type="text" id="new-routine-title" placeholder="Routine / medication name" required style="width: 90%;"><br>
+                            <label style="font-size: 0.85em;">Type:</label>
+                            <select id="new-routine-category" style="font-size: 0.85em;">
+                                <option value="routine">Routine</option>
+                                <option value="medication">Medication</option>
+                            </select><br>
+                            <button type="submit">ADD</button>
                         </form>
                     </div>
 
                     <!-- Right: Tamagotchi -->
                     <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
                         <h3>TAMAGOTCHI STATUS</h3>
-                        <pre id="cat-ascii" style="font-size: 1.5rem; color: #ffcc00; margin: 20px 0;">
+                        <pre id="cat-ascii" style="font-size: 1.5rem; color: var(--corp-gold); margin: 20px 0;">
  /\_/\
 ( o.o )
  > ^ <
@@ -206,7 +265,9 @@
                             <p>Happiness: <span id="tama-happy">100</span>%</p>
                             <p>Cleanliness: <span id="tama-clean">100</span>%</p>
                         </div>
-                        <p id="routine-dot-msg" style="color: #008080; font-style: italic; margin-top: 20px;"></p>
+                        <p id="pet-state-msg" style="color: var(--corp-cyan); font-style: italic; margin-top: 15px; font-size: 0.9em;"></p>
+                        <p id="routine-dot-msg" style="color: #008080; font-style: italic; margin-top: 10px;"></p>
+                        <button id="recolor-btn" style="margin-top: 10px; font-size: 0.8em; align-self: center;">NEW LOOK (CHANGE COLOR)</button>
                     </div>
                 </div>
                 <br>
@@ -244,6 +305,8 @@
                         </form>
                     </div>
                 </div>
+                <br>
+                <button onclick="navigate('main-menu')">BACK [0]</button>
             </div>
 
             <div id="settings-section" class="hidden section">
