@@ -22,7 +22,10 @@ def init_db():
             context_size INTEGER DEFAULT 10,
             motd TEXT,
             motd_time DATETIME,
-            user_name TEXT DEFAULT 'User'
+            user_name TEXT DEFAULT 'User',
+            jira_url TEXT,
+            jira_email TEXT,
+            jira_token TEXT
         )
     ''')
 
@@ -74,13 +77,14 @@ def init_db():
         )
     ''')
 
-    # Medium Tasks table
+    # Medium Tasks table (jira_key links a task back to an imported Jira issue)
     c.execute('''
         CREATE TABLE IF NOT EXISTS medium_tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             description TEXT,
-            status TEXT DEFAULT 'pending'
+            status TEXT DEFAULT 'pending',
+            jira_key TEXT
         )
     ''')
 
@@ -122,6 +126,10 @@ def init_db():
     _ensure_column(c, 'routine_tasks', 'reminder_interval', "reminder_interval INTEGER DEFAULT 0")
     _ensure_column(c, 'tamagotchi', 'color', "color TEXT DEFAULT 'gold'")
     _ensure_column(c, 'tamagotchi', 'last_update', "last_update DATETIME")
+    _ensure_column(c, 'settings', 'jira_url', "jira_url TEXT")
+    _ensure_column(c, 'settings', 'jira_email', "jira_email TEXT")
+    _ensure_column(c, 'settings', 'jira_token', "jira_token TEXT")
+    _ensure_column(c, 'medium_tasks', 'jira_key', "jira_key TEXT")
     c.execute('UPDATE tamagotchi SET last_update = ? WHERE last_update IS NULL', (now_str,))
     c.execute("UPDATE tamagotchi SET color = 'gold' WHERE color IS NULL")
 

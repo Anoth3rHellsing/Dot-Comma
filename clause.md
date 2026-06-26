@@ -135,10 +135,24 @@ calendar GET/POST round-trip all return 200.*
 
 ## Current direction (2026-06-26)
 
-External integrations (Spotify / Google / Microsoft / Twitch / YouTube) are **out** —
-DeepSeek is the only outside service. Active focus:
+External integrations (Spotify / Google / Microsoft / Twitch / YouTube) are **out**.
+The only outside services are **DeepSeek** (Dot's brain) and **Jira** (work organization).
 
-1. **Jira / work-job organization** — integrate the JiraDashboard project so Dot can
-   organize work-related jobs (approach TBD — see open question with the user).
+1. **Jira / work-job organization.** ✅ DONE
+   Fresh integration (no merge of the local JiraDashboard code — it wasn't reachable).
+   `jira_provider.py` talks to Jira Cloud REST; credentials (`jira_url` / `jira_email` /
+   `jira_token`) live in Settings using the same secret pattern as the DeepSeek key
+   (token never returned to the client). New **[8] WORK (JIRA)** screen:
+   - **My assigned issues** (`assignee = currentUser() AND statusCategory != Done`) with
+     an **IMPORT → TASKS** button — imported issues dedupe on `jira_key` and show their
+     key in the Tasks list.
+   - **Board / sprint picker** — lists Jira boards and surfaces the chosen board's open
+     issues (works for kanban and scrum).
+   - Auth is validated against `/rest/api/3/myself` (which 401s on a bad token) because
+     `/search/jql` silently returns empty results for bad auth.
+   *Verified: settings storage + token masking, import/dedup (mocked issues), and clean
+   401 handling against the live cogep.atlassian.net site. Pulling real issues needs your
+   API token entered in Settings.*
+
 2. **System (desktop) notifications** for routine reminders (water, breaks, etc.) —
    built via the browser Notification API. ✅ DONE
