@@ -53,6 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (e.key === '5') navigate('settings');
             if (e.key === '6') navigate('finance');
             if (e.key === '7') navigate('calendar');
+            if (e.key === '8') navigate('jira');
         } else {
             // Only allow 0 to go back if we are not on intro screen
             if (e.key === '0' && document.getElementById('intro-screen').classList.contains('hidden')) {
@@ -139,6 +140,8 @@ function navigate(section) {
             loadGeneralChat();
         } else if (section === 'finance') {
             loadFinance();
+        } else if (section === 'jira') {
+            loadJira();
         }
     }
 }
@@ -330,7 +333,7 @@ async function loadTasks() {
     tasks.forEach(t => {
         if (t.status === 'done') return;
         const li = document.createElement('li');
-        li.innerText = `> ${t.title}`;
+        li.innerText = t.jira_key ? `> [${t.jira_key}] ${t.title}` : `> ${t.title}`;
         li.onclick = () => selectTask(t);
         list.appendChild(li);
     });
@@ -541,7 +544,116 @@ async function loadSettings() {
     document.getElementById('context-size').value = data.context_size || 10;
 
     loadMemory();
+    loadJiraSettings();
 }
+
+async function loadJiraSettings() {
+    const res = await fetch('/api/jira/settings');
+    const data = await res.json();
+    document.getElementById('jira-url').value = data.jira_url || '';
+    document.getElementById('jira-email').value = data.jira_email || '';
+    document.getElementById('jira-token-status').innerText = data.jira_token_set ? '(token saved)' : '(no token yet)';
+}
+
+document.getElementById('jira-settings-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+        jira_url: document.getElementById('jira-url').value,
+        jira_email: document.getElementById('jira-email').value,
+        jira_token: document.getElementById('jira-token').value
+    };
+    await fetch('/api/jira/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    document.getElementById('jira-token').value = '';
+    showNotification('Jira connection saved.');
+    loadJiraSettings();
+});
+
+// --- WORK (JIRA) ---
+function renderJiraIssues(container, issues) {
+    container.innerHTML = '';
+    if (!issues || issues.length === 0) {
+        container.innerHTML = '<p style="color:#888;">No open issues.</p>';
+        return;
+    }
+    issues.forEach(i => {
+        const div = document.createElement('div');
+        div.style.borderBottom = '1px dashed var(--corp-blue)';
+        div.style.padding = '6px 0';
+        div.style.fontSize = '0.9em';
+        const prio = i.priority ? ` · ${i.priority}` : '';
+        const due = i.duedate ? ` · due ${i.duedate}` : '';
+        div.innerHTML = `
+            <a href="${i.url}" target="_blank" style="color: var(--corp-blue); text-decoration: none;"><strong>${i.key}</strong></a>
+            — ${i.summary}<br>
+            <span style="color:#888; font-size:0.85em;">${i.type} · ${i.status}${prio}${due}</span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function loadJira() {
+    const unconfigured = document.getElementById('jira-unconfigured');
+    const assigned = document.getElementById('jira-assigned-list');
+    const boardSelect = document.getElementById('jira-board-select');
+    document.getElementById('jira-import-feedback').innerText = '';
+    assigned.innerHTML = 'Loading...';
+    boardSelect.innerHTML = '<option value="">— Select a board —</option>';
+    document.getElementById('jira-board-list').innerHTML = '';
+
+    // assigned issues
+    const res = await fetch('/api/jira/issues');
+    const data = await res.json();
+    if (data.status !== 'success') {
+        unconfigured.classList.remove('hidden');
+        unconfigured.innerText = `[SYSTEM]: ${data.message}`;
+        assigned.innerHTML = '';
+        return;
+    }
+    unconfigured.classList.add('hidden');
+    renderJiraIssues(assigned, data.issues);
+
+    // boards
+    const bres = await fetch('/api/jira/boards');
+    const bdata = await bres.json();
+    if (bdata.status === 'success') {
+        bdata.boards.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            opt.innerText = `${b.name} (${b.type})`;
+            boardSelect.appendChild(opt);
+        });
+    }
+}
+
+document.getElementById('jira-board-select')?.addEventListener('change', async (e) => {
+    const boardId = e.target.value;
+    const list = document.getElementById('jira-board-list');
+    if (!boardId) { list.innerHTML = ''; return; }
+    list.innerHTML = 'Loading board issues...';
+    const res = await fetch(`/api/jira/board_issues?board_id=${boardId}`);
+    const data = await res.json();
+    if (data.status === 'success') {
+        renderJiraIssues(list, data.issues);
+    } else {
+        list.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`;
+    }
+});
+
+document.getElementById('jira-import-btn')?.addEventListener('click', async () => {
+    const fb = document.getElementById('jira-import-feedback');
+    fb.innerText = 'Importing...';
+    const res = await fetch('/api/jira/import', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'success') {
+        fb.innerText = `Imported ${data.imported} new issue(s) into Tasks (${data.total} assigned total).`;
+    } else {
+        fb.innerText = data.message || 'Import failed.';
+    }
+});
 
 async function loadMemory() {
     const res = await fetch('/api/memory');

@@ -32,12 +32,15 @@ D.O.T. (formerly Dot & Comma) is a daily task manager centered around Sprint and
 * **AI Stand-up:** A daily 15-minute check-in with "Dot", the AI assistant, to track progress and manage tasks.
 * **Retro 80s Aesthetic:** The application's visual design strictly adheres to an 80s CRT monitor aesthetic (featuring scanlines, screen flicker, phosphor glow, and a DOS-style boot screen), combined with refined structural styling.
 * **Persistent Chat:** AI communication and notifications are handled via an in-page persistent chat interface, saving conversations to the database.
+* **Jira (Work):** Optional Jira connection that pulls your assigned issues into Tasks and surfaces a chosen board/sprint. Configure your site URL, email, and API token in System Settings.
+* **Desktop Reminders:** Routine tasks (water, breaks, medications) can fire native desktop notifications on a per-routine interval.
 
 ### Tech Stack
 * **Backend:** Python, Flask
 * **Frontend:** Vanilla HTML, CSS, JavaScript
 * **Database:** SQLite (Stored persistently in the system's AppData directory)
 * **AI Integration:** DeepSeek API
+* **Work Integration:** Jira Cloud REST API (optional)
 
 ---
 
@@ -72,9 +75,12 @@ D.O.T. (anteriormente Dot & Comma) es un gestor de tareas diarias centrado en la
 * **Stand-up de IA:** Una sesión diaria de 15 minutos con "Dot", el asistente de IA, para realizar un seguimiento del progreso y gestionar tareas.
 * **Estética Retro de los 80:** El diseño visual de la aplicación se adhiere estrictamente a la estética de los monitores CRT de los años 80 (con líneas de escaneo, parpadeo de pantalla, brillo de fósforo y una pantalla de inicio estilo DOS), combinada con un estilo estructural refinado.
 * **Chat Persistente:** La comunicación y notificaciones de la IA se manejan a través de una interfaz de chat persistente en la página, guardando las conversaciones en la base de datos.
+* **Jira (Trabajo):** Conexión opcional con Jira que importa tus incidencias asignadas a Tareas y muestra el tablero/sprint elegido. Configura la URL de tu sitio, correo y token de API en Ajustes del Sistema.
+* **Recordatorios de Escritorio:** Las tareas de rutina (agua, descansos, medicamentos) pueden lanzar notificaciones nativas de escritorio en un intervalo por rutina.
 
 ### Tecnologías Utilizadas
 * **Backend:** Python, Flask
 * **Frontend:** HTML vainilla, CSS, JavaScript
 * **Base de Datos:** SQLite (Almacenada de forma persistente en el directorio AppData del sistema)
 * **Integración de IA:** API de DeepSeek
+* **Integración de Trabajo:** API REST de Jira Cloud (opcional)

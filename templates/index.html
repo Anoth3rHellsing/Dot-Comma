@@ -121,6 +121,7 @@
                     <li onclick="navigate('settings')" class="menu-item">[5] SYSTEM SETTINGS</li>
                     <li onclick="navigate('finance')" class="menu-item">[6] ECONOMY & FINANCE</li>
                     <li onclick="navigate('calendar')" class="menu-item" style="color: var(--corp-magenta); border-color: var(--corp-magenta);">[7] CALENDAR</li>
+                    <li onclick="navigate('jira')" class="menu-item" style="color: var(--corp-blue); border-color: var(--corp-blue);">[8] WORK (JIRA)</li>
                 </ul>
                 <p style="text-align: center; margin-top: 20px;">Select option to proceed.</p>
             </div>
@@ -327,6 +328,19 @@
 
                             <button type="submit">SAVE SETTINGS</button>
                         </form>
+                        <hr style="border: 1px solid var(--corp-blue); margin: 20px 0;">
+                        <h3 style="color: var(--corp-blue);">JIRA CONNECTION</h3>
+                        <p style="font-size: 0.85em;">Connects Dot to your Jira to organize work. Create an API token at id.atlassian.com → Security → API tokens.</p>
+                        <form id="jira-settings-form">
+                            <label>Jira Site URL:</label><br>
+                            <input type="text" id="jira-url" placeholder="https://yoursite.atlassian.net" style="width: 300px;"><br><br>
+                            <label>Jira Email:</label><br>
+                            <input type="text" id="jira-email" placeholder="you@company.com" style="width: 300px;"><br><br>
+                            <label>Jira API Token:</label> <span id="jira-token-status" style="font-size: 0.8em; color: var(--corp-teal);"></span><br>
+                            <input type="password" id="jira-token" placeholder="Paste token (leave blank to keep existing)" style="width: 300px;"><br><br>
+                            <button type="submit">SAVE JIRA CONNECTION</button>
+                        </form>
+
                         <hr style="border: 1px solid #008080; margin: 20px 0;">
                         <h3>LOCAL CHAT ARCHIVE</h3>
                         <p style="font-size: 0.9em;">Releases old chats from DeepSeek context, storing them locally.</p>
@@ -384,6 +398,37 @@
                             [DOT]: Ready to review your spending habits. Or lack thereof.
                         </div>
                         <button id="finance-advice-btn" style="margin-top: auto;">REQUEST FINANCIAL ADVICE</button>
+                    </div>
+                </div>
+                <br>
+                <button onclick="navigate('main-menu')">BACK [0]</button>
+            </div>
+
+            <div id="jira-section" class="hidden section">
+                <h2 style="color: var(--corp-blue);">[8] WORK (JIRA)</h2>
+                <p>Pull your Jira workload in so Dot can help you organize it.</p>
+                <div id="jira-unconfigured" class="hidden" style="color: var(--corp-amber); margin-bottom: 15px;">
+                    [SYSTEM]: Jira is not configured. Add your site URL, email, and API token in [5] System Settings.
+                </div>
+
+                <div style="display: flex; gap: 20px; height: 60vh;">
+                    <!-- Left: assigned issues + import -->
+                    <div style="flex: 1; border: 1px solid var(--corp-blue); padding: 10px; overflow-y: auto; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="color: var(--corp-blue); margin: 0;">MY ASSIGNED ISSUES</h3>
+                            <button id="jira-import-btn" style="font-size: 0.75em;">IMPORT → TASKS</button>
+                        </div>
+                        <div id="jira-import-feedback" style="color: var(--corp-gold); font-size: 0.85em; margin: 6px 0;"></div>
+                        <div id="jira-assigned-list" style="flex: 1; overflow-y: auto;"></div>
+                    </div>
+
+                    <!-- Right: board / sprint browser -->
+                    <div style="flex: 1; border: 1px solid var(--corp-blue); padding: 10px; overflow-y: auto; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--corp-blue); margin-top: 0;">BOARD / SPRINT</h3>
+                        <select id="jira-board-select" style="width: 100%;">
+                            <option value="">— Select a board —</option>
+                        </select>
+                        <div id="jira-board-list" style="flex: 1; overflow-y: auto; margin-top: 10px;"></div>
                     </div>
                 </div>
                 <br>
