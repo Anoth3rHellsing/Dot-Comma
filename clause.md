@@ -90,10 +90,11 @@ calendar GET/POST round-trip all return 200.*
    - **Medications:** routines now have a `category` ('routine' | 'medication'); meds
      are tagged with 💊 and shown in magenta.
 
-10. **No external integrations at all** (all spec'd, none built):
-    - **Google Workspace / Microsoft 365** (Gmail, Outlook send/connect).
-    - **Spotify** daily playlist based on task load (lofi vs. "Pitbull-like").
-    - **Twitch / YouTube** connectors for content-creator performance.
+10. **External integrations dropped (plan change 2026-06-26).** ✅ REMOVED
+    Spotify, Google Workspace / Microsoft 365 (Gmail / Outlook), and Twitch / YouTube
+    were removed from the plan. The **only** external service Dot & Comma talks to is the
+    **DeepSeek** API (for Dot's responses). All references to the dropped services were
+    struck from `clause.md` and the `JULES READ THIS` brief.
 
 ---
 
@@ -132,9 +133,12 @@ calendar GET/POST round-trip all return 200.*
 
 ---
 
-## Suggested priority order
+## Current direction (2026-06-26)
 
-1. Fix the two Sprint bugs (#1, #2) — they make a whole menu effectively unusable.
-2. Fix the calendar connection leak (#3) and add the BACK button (#4).
-3. Decide which of the bigger spec features (#5–#12) are actually in scope for this
-   release vs. a later phase — the integrations (#10) especially are large efforts.
+External integrations (Spotify / Google / Microsoft / Twitch / YouTube) are **out** —
+DeepSeek is the only outside service. Active focus:
+
+1. **Jira / work-job organization** — integrate the JiraDashboard project so Dot can
+   organize work-related jobs (approach TBD — see open question with the user).
+2. **System (desktop) notifications** for routine reminders (water, breaks, etc.) —
+   built via the browser Notification API. ✅ DONE

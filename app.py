@@ -160,8 +160,12 @@ def api_routines():
     elif request.method == 'POST':
         data = request.json
         category = data.get('category', 'routine')
-        conn.execute('INSERT INTO routine_tasks (title, description, done_today, category) VALUES (?, ?, 0, ?)',
-                     (data.get('title'), data.get('description', ''), category))
+        try:
+            interval = int(data.get('reminder_interval', 0) or 0)
+        except (TypeError, ValueError):
+            interval = 0
+        conn.execute('INSERT INTO routine_tasks (title, description, done_today, category, reminder_interval) VALUES (?, ?, 0, ?, ?)',
+                     (data.get('title'), data.get('description', ''), category, interval))
         conn.commit()
         conn.close()
         return jsonify({'status': 'success'})
