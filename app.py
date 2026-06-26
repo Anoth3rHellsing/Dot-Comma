@@ -401,25 +401,26 @@ def api_notifications():
 def api_calendar():
     conn = get_db_connection()
 
-    if request.method == 'GET':
-        events = conn.execute('SELECT * FROM calendar_events ORDER BY event_datetime ASC').fetchall()
-        return jsonify([dict(e) for e in events])
+    try:
+        if request.method == 'GET':
+            events = conn.execute('SELECT * FROM calendar_events ORDER BY event_datetime ASC').fetchall()
+            return jsonify([dict(e) for e in events])
 
-    elif request.method == 'POST':
-        data = request.json
-        title = data.get('title')
-        dt_str = data.get('datetime')
-        conn.execute('INSERT INTO calendar_events (title, event_datetime) VALUES (?, ?)', (title, dt_str))
-        conn.commit()
-        return jsonify({"status": "success"})
+        elif request.method == 'POST':
+            data = request.json
+            title = data.get('title')
+            dt_str = data.get('datetime')
+            conn.execute('INSERT INTO calendar_events (title, event_datetime) VALUES (?, ?)', (title, dt_str))
+            conn.commit()
+            return jsonify({"status": "success"})
 
-    elif request.method == 'DELETE':
-        event_id = request.json.get('id')
-        conn.execute('DELETE FROM calendar_events WHERE id = ?', (event_id,))
-        conn.commit()
-        return jsonify({"status": "deleted"})
-
-    conn.close()
+        elif request.method == 'DELETE':
+            event_id = request.json.get('id')
+            conn.execute('DELETE FROM calendar_events WHERE id = ?', (event_id,))
+            conn.commit()
+            return jsonify({"status": "deleted"})
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     init_db()

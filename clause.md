@@ -28,26 +28,26 @@ roughly ordered by importance.
 
 ---
 
-## 🐞 Bugs to fix (these are broken right now)
+## ✅ Bugs fixed (2026-06-26)
 
-1. **Keyboard navigation to the Sprint menu is broken.**
-   `static/script.js` maps `key === '1'` → `navigate('scrum')`, but there is no
-   `scrum-section` (the section is `sprints-section`). Pressing **1** throws a
-   null-reference error. → Change `navigate('scrum')` to `navigate('sprints')`.
+1. **Keyboard navigation to the Sprint menu was broken.** ✅ FIXED
+   `static/script.js` mapped `key === '1'` → `navigate('scrum')`, but there is no
+   `scrum-section` (the section is `sprints-section`), so pressing **1** threw a
+   null-reference error. Changed to `navigate('sprints')`.
 
-2. **The Active Sprints list never loads when you open the Sprint screen.**
-   `navigate()` calls `loadTasks/loadRoutines/loadFinance/...` but has **no**
-   `else if (section === 'sprints') loadSprints();` branch. Sprints only appear
-   after you create/update one. → Add the missing `loadSprints()` call.
+2. **The Active Sprints list never loaded when opening the Sprint screen.** ✅ FIXED
+   `navigate()` had no `else if (section === 'sprints') loadSprints();` branch, so
+   sprints only appeared after you created/updated one. Added the missing call.
 
-3. **Database connection leak in `/api/calendar`.**
-   In `app.py`, every branch (`GET`/`POST`/`DELETE`) `return`s before the trailing
-   `conn.close()`, so the connection is never closed. → Close the connection in each
-   branch (or use a `try/finally`).
+3. **Database connection leak in `/api/calendar`.** ✅ FIXED
+   Every branch (`GET`/`POST`/`DELETE`) returned before the trailing `conn.close()`,
+   so the connection was never closed. Wrapped the body in `try/finally`.
 
-4. **Calendar screen has no BACK button.**
-   Every other section has `BACK [0]`; the calendar section does not. You can still
-   press `0`, but the on-screen button is missing for consistency.
+4. **Calendar screen had no BACK button.** ✅ FIXED
+   Every other section has `BACK [0]`; the calendar section did not. Added it.
+
+*Verified by smoke test: app boots, `/api/dashboard`, `/api/sprints`, and the
+calendar GET/POST round-trip all return 200.*
 
 ---
 

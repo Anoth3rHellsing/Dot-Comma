@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Keyboard navigation mapping
     document.addEventListener('keydown', (e) => {
         if (!document.getElementById('main-menu').classList.contains('hidden')) {
-            if (e.key === '1') navigate('scrum');
+            if (e.key === '1') navigate('sprints');
             if (e.key === '2') navigate('tasks');
             if (e.key === '3') navigate('routines');
             if (e.key === '4') navigate('dot-chat');
@@ -114,7 +114,9 @@ function navigate(section) {
         loadDashboard(); // Refresh stats when returning to main menu
     } else {
         document.getElementById(`${section}-section`).classList.remove('hidden');
-        if (section === 'settings') {
+        if (section === 'sprints') {
+            loadSprints();
+        } else if (section === 'settings') {
             loadSettings();
         } else if (section === 'calendar') {
             loadCalendar();
