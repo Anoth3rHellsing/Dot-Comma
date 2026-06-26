@@ -88,6 +88,12 @@ async function loadDashboard() {
         document.getElementById('dash-tama-hp').innerText = data.tamagotchi.health;
         document.getElementById('dash-tama-happy').innerText = data.tamagotchi.happiness;
         document.getElementById('dash-tama-clean').innerText = data.tamagotchi.cleanliness;
+
+        const miniCat = document.getElementById('mini-cat-ascii');
+        if (miniCat) {
+            miniCat.style.color = colorVar(data.tamagotchi.color);
+            if (data.pet_state) miniCat.innerText = catArt(data.pet_state.mood);
+        }
     }
 
     document.getElementById('main-menu').classList.remove('hidden');
@@ -144,15 +150,36 @@ function showNotification(msg) {
     }, 5000);
 }
 
+// --- Tamagotchi rendering helpers ---
+function catArt(mood) {
+    let face = '( o.o )';
+    if (mood === 'happy') face = '( ^.^ )';
+    else if (mood === 'struggling') face = '( ;_; )';
+    return ` /\\_/\\\n${face}\n > ^ < `;
+}
+
+function colorVar(color) {
+    const known = ['gold', 'cyan', 'magenta', 'green', 'red', 'blue'];
+    return known.includes(color) ? `var(--corp-${color})` : 'var(--corp-gold)';
+}
+
 async function loadRoutines() {
     const res = await fetch('/api/routines');
     const data = await res.json();
 
-    if (data.tamagotchi) {
-        document.getElementById('tama-hp').innerText = data.tamagotchi.health;
-        document.getElementById('tama-happy').innerText = data.tamagotchi.happiness;
-        document.getElementById('tama-clean').innerText = data.tamagotchi.cleanliness;
+    const tama = data.tamagotchi || {};
+    const state = data.pet_state || {};
+
+    document.getElementById('tama-hp').innerText = tama.health ?? 100;
+    document.getElementById('tama-happy').innerText = tama.happiness ?? 100;
+    document.getElementById('tama-clean').innerText = tama.cleanliness ?? 100;
+
+    const catEl = document.getElementById('cat-ascii');
+    if (catEl) {
+        catEl.innerText = catArt(state.mood);
+        catEl.style.color = colorVar(tama.color);
     }
+    document.getElementById('pet-state-msg').innerText = state.message || '';
 
     const list = document.getElementById('routine-list');
     list.innerHTML = '';
@@ -170,7 +197,9 @@ async function loadRoutines() {
         }
 
         const span = document.createElement('span');
-        span.innerText = ` ${r.title}`;
+        const tag = r.category === 'medication' ? '💊 ' : '';
+        span.innerText = ` ${tag}${r.title}`;
+        if (r.category === 'medication') span.style.color = 'var(--corp-magenta)';
         if (r.done_today) {
             span.style.textDecoration = 'line-through';
             span.style.opacity = 0.5;
@@ -181,6 +210,11 @@ async function loadRoutines() {
         list.appendChild(li);
     });
 }
+
+document.getElementById('recolor-btn')?.addEventListener('click', async () => {
+    await fetch('/api/tamagotchi/color', { method: 'POST' });
+    loadRoutines();
+});
 
 async function completeRoutine(id) {
     const res = await fetch('/api/routines', {
@@ -198,10 +232,11 @@ async function completeRoutine(id) {
 document.getElementById('new-routine-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = document.getElementById('new-routine-title').value;
+    const category = document.getElementById('new-routine-category').value;
     await fetch('/api/routines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
+        body: JSON.stringify({ title, category })
     });
     document.getElementById('new-routine-title').value = '';
     loadRoutines();

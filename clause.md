@@ -76,15 +76,19 @@ calendar GET/POST round-trip all return 200.*
 
 ---
 
-## ❌ Still missing (later phases)
+## ✅ Phase B — Tamagotchi soul (built 2026-06-26)
 
-9. **Tamagotchi stats never decay and the "self-care / can't die" logic is missing.**
-   - Stats only ever go **up** (completing a routine), they never decrease over time,
-     so the pet/user-health parallel doesn't really work.
-   - Spec: pet cannot die; if Dot suspects low self-care/depression, the pet should
-     start self-caring and motivate the user. Not implemented.
-   - "Pet is always a cat, colors may vary" — color variation not implemented.
-   - "User can add medications/routines" — only generic routine titles supported.
+9. **Tamagotchi decay + "self-care / can't die" logic.** ✅ DONE
+   - Stats now **decay per hour** (`last_update` timestamp drives it: health −2/hr,
+     happiness −3/hr, cleanliness −4/hr), applied on each dashboard/routines read.
+   - **The cat can't die:** stats floor at 20 (`TAMA_LOW`). When it bottoms out, the
+     cat "self-cares" and Dot shows a *gentle, non-clinical* encouraging message
+     ("it can't fall apart — and neither can you"). No diagnosing.
+   - **Color variation:** `color` column + `/api/tamagotchi/color` "NEW LOOK" button
+     cycles the cat through 6 CRT colors. Mood also changes its ASCII face
+     (happy / okay / struggling).
+   - **Medications:** routines now have a `category` ('routine' | 'medication'); meds
+     are tagged with 💊 and shown in magenta.
 
 10. **No external integrations at all** (all spec'd, none built):
     - **Google Workspace / Microsoft 365** (Gmail, Outlook send/connect).

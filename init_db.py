@@ -1,5 +1,14 @@
 import sqlite3
+import datetime
 import db_utils
+
+
+def _ensure_column(c, table, column, ddl):
+    """Add a column to an existing table if it isn't there yet (lightweight migration)."""
+    existing = [row[1] for row in c.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in existing:
+        c.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+
 
 def init_db():
     conn = db_utils.get_db_connection()
@@ -76,30 +85,43 @@ def init_db():
         )
     ''')
 
-    # Routine Tasks table
+    # Routine Tasks table (category distinguishes ordinary routines from medications)
     c.execute('''
         CREATE TABLE IF NOT EXISTS routine_tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             description TEXT,
-            done_today BOOLEAN DEFAULT 0
+            done_today BOOLEAN DEFAULT 0,
+            category TEXT DEFAULT 'routine'
         )
     ''')
 
-    # Tamagotchi status table
+    # Tamagotchi status table (color varies; last_update drives hourly stat decay)
     c.execute('''
         CREATE TABLE IF NOT EXISTS tamagotchi (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             health INTEGER DEFAULT 100,
             happiness INTEGER DEFAULT 100,
-            cleanliness INTEGER DEFAULT 100
+            cleanliness INTEGER DEFAULT 100,
+            color TEXT DEFAULT 'gold',
+            last_update DATETIME
         )
     ''')
+
+    now_str = datetime.datetime.now().isoformat(sep=' ', timespec='seconds')
 
     # Ensure tamagotchi row exists
     c.execute('SELECT COUNT(*) FROM tamagotchi')
     if c.fetchone()[0] == 0:
-        c.execute('INSERT INTO tamagotchi (health, happiness, cleanliness) VALUES (100, 100, 100)')
+        c.execute('INSERT INTO tamagotchi (health, happiness, cleanliness, color, last_update) VALUES (100, 100, 100, ?, ?)',
+                  ('gold', now_str))
+
+    # --- Migrations for databases created before these columns existed ---
+    _ensure_column(c, 'routine_tasks', 'category', "category TEXT DEFAULT 'routine'")
+    _ensure_column(c, 'tamagotchi', 'color', "color TEXT DEFAULT 'gold'")
+    _ensure_column(c, 'tamagotchi', 'last_update', "last_update DATETIME")
+    c.execute('UPDATE tamagotchi SET last_update = ? WHERE last_update IS NULL', (now_str,))
+    c.execute("UPDATE tamagotchi SET color = 'gold' WHERE color IS NULL")
 
     # Economy & Finance table
     c.execute('''

@@ -219,15 +219,20 @@
                         <ul id="routine-list" style="list-style-type: none; padding: 0;"></ul>
 
                         <form id="new-routine-form" style="margin-top: 20px; border-top: 1px dashed #00ff00; padding-top: 10px;">
-                            <input type="text" id="new-routine-title" placeholder="Routine Title" required style="width: 90%;"><br>
-                            <button type="submit">ADD ROUTINE</button>
+                            <input type="text" id="new-routine-title" placeholder="Routine / medication name" required style="width: 90%;"><br>
+                            <label style="font-size: 0.85em;">Type:</label>
+                            <select id="new-routine-category" style="font-size: 0.85em;">
+                                <option value="routine">Routine</option>
+                                <option value="medication">Medication</option>
+                            </select><br>
+                            <button type="submit">ADD</button>
                         </form>
                     </div>
 
                     <!-- Right: Tamagotchi -->
                     <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
                         <h3>TAMAGOTCHI STATUS</h3>
-                        <pre id="cat-ascii" style="font-size: 1.5rem; color: #ffcc00; margin: 20px 0;">
+                        <pre id="cat-ascii" style="font-size: 1.5rem; color: var(--corp-gold); margin: 20px 0;">
  /\_/\
 ( o.o )
  > ^ <
@@ -237,7 +242,9 @@
                             <p>Happiness: <span id="tama-happy">100</span>%</p>
                             <p>Cleanliness: <span id="tama-clean">100</span>%</p>
                         </div>
-                        <p id="routine-dot-msg" style="color: #008080; font-style: italic; margin-top: 20px;"></p>
+                        <p id="pet-state-msg" style="color: var(--corp-cyan); font-style: italic; margin-top: 15px; font-size: 0.9em;"></p>
+                        <p id="routine-dot-msg" style="color: #008080; font-style: italic; margin-top: 10px;"></p>
+                        <button id="recolor-btn" style="margin-top: 10px; font-size: 0.8em; align-self: center;">NEW LOOK (CHANGE COLOR)</button>
                     </div>
                 </div>
                 <br>

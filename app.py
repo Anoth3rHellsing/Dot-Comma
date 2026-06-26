@@ -12,6 +12,70 @@ app = Flask(__name__)
 def get_db_connection():
     return db_utils.get_db_connection()
 
+
+# --- Tamagotchi (virtual cat) tuning ---
+TAMA_DECAY_PER_HOUR = {'health': 2, 'happiness': 3, 'cleanliness': 4}
+TAMA_LOW = 20      # self-care floor: the cat can't drop below this, so it never dies
+TAMA_MAX = 100
+TAMA_COLORS = ['gold', 'cyan', 'magenta', 'green', 'red', 'blue']
+
+
+def apply_tamagotchi_decay(conn):
+    """Decay the cat's stats by whole elapsed hours. The cat self-cares before it can
+    die, so no stat ever falls below TAMA_LOW. Returns the (possibly updated) row."""
+    tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+    if not tama:
+        return None
+
+    now = datetime.datetime.now()
+    last_str = tama['last_update']
+    try:
+        last = datetime.datetime.fromisoformat(last_str) if last_str else now
+    except (ValueError, TypeError):
+        last = now
+
+    elapsed_hours = int((now - last).total_seconds() // 3600)
+    if elapsed_hours < 1:
+        return tama  # not yet another full hour; keep the leftover minutes
+
+    new_stats = {}
+    for stat, rate in TAMA_DECAY_PER_HOUR.items():
+        decayed = tama[stat] - rate * elapsed_hours
+        new_stats[stat] = max(TAMA_LOW, min(TAMA_MAX, decayed))
+
+    # advance the clock only by the whole hours we consumed
+    new_last = last + datetime.timedelta(hours=elapsed_hours)
+
+    conn.execute('''UPDATE tamagotchi
+                    SET health = ?, happiness = ?, cleanliness = ?, last_update = ?
+                    WHERE id = 1''',
+                 (new_stats['health'], new_stats['happiness'], new_stats['cleanliness'],
+                  new_last.isoformat(sep=' ', timespec='seconds')))
+    conn.commit()
+    return conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+
+
+def tamagotchi_state(tama):
+    """Mood + a gentle, encouraging message based on the cat's stats."""
+    if not tama:
+        return {'mood': 'unknown', 'message': '', 'avg': 0}
+
+    avg = (tama['health'] + tama['happiness'] + tama['cleanliness']) / 3
+    struggling = min(tama['health'], tama['happiness'], tama['cleanliness']) <= TAMA_LOW
+
+    if struggling:
+        mood = 'struggling'
+        message = ("Your cat is quietly grooming itself and keeping going, even while it's running low. "
+                   "It can't fall apart — and neither can you. Tick off a little self-care and you'll both feel better.")
+    elif avg >= 70:
+        mood = 'happy'
+        message = "Your cat is thriving. Keep it up — both of you."
+    else:
+        mood = 'okay'
+        message = "Your cat is doing alright, but could use some care. A routine or two would help."
+
+    return {'mood': mood, 'message': message, 'avg': round(avg)}
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -86,27 +150,29 @@ def api_tasks():
 def api_routines():
     conn = get_db_connection()
     if request.method == 'GET':
+        tama = apply_tamagotchi_decay(conn)
         routines = conn.execute('SELECT * FROM routine_tasks').fetchall()
-        tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
         conn.close()
         return jsonify({
             'routines': [dict(r) for r in routines],
-            'tamagotchi': dict(tama) if tama else {}
+            'tamagotchi': dict(tama) if tama else {},
+            'pet_state': tamagotchi_state(tama)
         })
     elif request.method == 'POST':
         data = request.json
-        conn.execute('INSERT INTO routine_tasks (title, description, done_today) VALUES (?, ?, 0)',
-                     (data.get('title'), data.get('description', '')))
+        category = data.get('category', 'routine')
+        conn.execute('INSERT INTO routine_tasks (title, description, done_today, category) VALUES (?, ?, 0, ?)',
+                     (data.get('title'), data.get('description', ''), category))
         conn.commit()
         conn.close()
         return jsonify({'status': 'success'})
     elif request.method == 'PUT':
-        # Mark routine as done, boost tamagotchi stats
+        # Mark routine as done, then boost the cat's stats (decay first so the boost is on top of current state)
         data = request.json
         routine_id = data.get('id')
 
+        apply_tamagotchi_decay(conn)
         conn.execute('UPDATE routine_tasks SET done_today = 1 WHERE id = ?', (routine_id,))
-        # Simple tamagotchi stat boost logic
         conn.execute('''
             UPDATE tamagotchi
             SET health = MIN(100, health + 10),
@@ -116,12 +182,13 @@ def api_routines():
         ''')
         conn.commit()
 
-        # Optionally, get a Dot response if health is low, etc (skipped for simplicity, keeping it positive here)
-        msg = generate_ai_response("The user just completed a routine task and fed their virtual cat. Give a very short, begrudgingly proud response as Dot.")
+        tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+
+        msg = generate_ai_response("The user just completed a routine task and cared for their virtual cat. Give a very short, begrudgingly proud response as Dot.")
         conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', msg))
         conn.commit()
         conn.close()
-        return jsonify({'status': 'success', 'dot_message': msg})
+        return jsonify({'status': 'success', 'dot_message': msg, 'pet_state': tamagotchi_state(tama)})
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
@@ -348,7 +415,7 @@ def api_dashboard():
 
     sprint_count = conn.execute('SELECT COUNT(*) FROM sprints').fetchone()[0]
 
-    tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+    tama = apply_tamagotchi_decay(conn)
 
     conn.close()
 
@@ -360,8 +427,24 @@ def api_dashboard():
             'routines': {'total': total_routines, 'completed': completed_routines},
             'sprint_count': sprint_count
         },
-        'tamagotchi': dict(tama) if tama else {}
+        'tamagotchi': dict(tama) if tama else {},
+        'pet_state': tamagotchi_state(tama)
     })
+
+
+@app.route('/api/tamagotchi/color', methods=['POST'])
+def api_tamagotchi_color():
+    conn = get_db_connection()
+    try:
+        tama = conn.execute('SELECT * FROM tamagotchi WHERE id = 1').fetchone()
+        current = tama['color'] if tama and tama['color'] else 'gold'
+        idx = TAMA_COLORS.index(current) if current in TAMA_COLORS else -1
+        new_color = TAMA_COLORS[(idx + 1) % len(TAMA_COLORS)]
+        conn.execute('UPDATE tamagotchi SET color = ? WHERE id = 1', (new_color,))
+        conn.commit()
+        return jsonify({'status': 'success', 'color': new_color})
+    finally:
+        conn.close()
 
 
 @app.route('/api/notifications', methods=['GET'])
