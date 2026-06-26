@@ -84,14 +84,16 @@ def init_db():
         )
     ''')
 
-    # Routine Tasks table (category distinguishes ordinary routines from medications)
+    # Routine Tasks table (category distinguishes ordinary routines from medications;
+    # reminder_interval is minutes between desktop reminders, 0 = no reminder)
     c.execute('''
         CREATE TABLE IF NOT EXISTS routine_tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             description TEXT,
             done_today BOOLEAN DEFAULT 0,
-            category TEXT DEFAULT 'routine'
+            category TEXT DEFAULT 'routine',
+            reminder_interval INTEGER DEFAULT 0
         )
     ''')
 
@@ -117,10 +119,26 @@ def init_db():
 
     # --- Migrations for databases created before these columns existed ---
     _ensure_column(c, 'routine_tasks', 'category', "category TEXT DEFAULT 'routine'")
+    _ensure_column(c, 'routine_tasks', 'reminder_interval', "reminder_interval INTEGER DEFAULT 0")
     _ensure_column(c, 'tamagotchi', 'color', "color TEXT DEFAULT 'gold'")
     _ensure_column(c, 'tamagotchi', 'last_update', "last_update DATETIME")
     c.execute('UPDATE tamagotchi SET last_update = ? WHERE last_update IS NULL', (now_str,))
     c.execute("UPDATE tamagotchi SET color = 'gold' WHERE color IS NULL")
+
+    # Seed default health-reminder routines on a brand-new database (first run only)
+    c.execute('SELECT first_run FROM settings WHERE id = 1')
+    first_row = c.fetchone()
+    c.execute('SELECT COUNT(*) FROM routine_tasks')
+    if first_row and first_row[0] and c.fetchone()[0] == 0:
+        defaults = [
+            ('Drink water', 'Stay hydrated.', 60),
+            ('Stand up & move', 'Get the blood flowing.', 90),
+            ('Rest your eyes (20-20-20)', 'Look 20ft away for 20 seconds.', 120),
+            ('Eat something', 'Fuel up properly.', 240),
+        ]
+        for title, desc, interval in defaults:
+            c.execute('''INSERT INTO routine_tasks (title, description, done_today, category, reminder_interval)
+                         VALUES (?, ?, 0, 'routine', ?)''', (title, desc, interval))
 
     # Economy & Finance table
     c.execute('''

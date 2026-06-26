@@ -238,7 +238,10 @@
                 <div style="display: flex; gap: 20px;">
                     <!-- Left: Routines -->
                     <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; height: 60vh; overflow-y: auto;">
-                        <h3>DAILY ROUTINES</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">DAILY ROUTINES</h3>
+                            <button id="enable-alerts-btn" style="font-size: 0.7em;">🔔 ENABLE DESKTOP ALERTS</button>
+                        </div>
                         <ul id="routine-list" style="list-style-type: none; padding: 0;"></ul>
 
                         <form id="new-routine-form" style="margin-top: 20px; border-top: 1px dashed #00ff00; padding-top: 10px;">
@@ -247,7 +250,9 @@
                             <select id="new-routine-category" style="font-size: 0.85em;">
                                 <option value="routine">Routine</option>
                                 <option value="medication">Medication</option>
-                            </select><br>
+                            </select>
+                            <label style="font-size: 0.85em; margin-left: 8px;">Remind every</label>
+                            <input type="number" id="new-routine-interval" min="0" value="0" style="width: 55px; font-size: 0.85em;"> min<br>
                             <button type="submit">ADD</button>
                         </form>
                     </div>

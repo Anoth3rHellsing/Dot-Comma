@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     setInterval(updateClock, 1000);
     // Check notifications every 15 seconds
     setInterval(checkNotifications, 15000);
+    // Schedule routine reminders (water, breaks, meds) app-wide, regardless of screen
+    initReminders();
 
     // Boot Animation Sequence
     const bootLines = [
@@ -106,8 +108,11 @@ async function finishIntro() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_name: nameInput })
     });
+    // Onboarding click is a user gesture — a good moment to ask for notification permission
+    requestNotificationPermission();
     document.getElementById('intro-screen').classList.add('hidden');
     await loadDashboard();
+    initReminders();
 }
 
 function navigate(section) {
@@ -149,6 +154,70 @@ function showNotification(msg) {
         setTimeout(() => toast.classList.add('hidden'), 500);
     }, 5000);
 }
+
+// --- System (desktop) notifications ---
+function requestNotificationPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+    }
+}
+
+// Show a real OS notification when allowed; otherwise fall back to the in-page toast.
+function systemNotify(title, body) {
+    if (('Notification' in window) && Notification.permission === 'granted') {
+        try {
+            new Notification(title, { body });
+            return;
+        } catch (e) { /* fall through to the toast */ }
+    }
+    showNotification(`${title} — ${body}`);
+}
+
+// --- Routine reminders (water, breaks, medication, etc.) ---
+let routineReminderTimers = {};
+
+function clearRoutineReminders() {
+    Object.values(routineReminderTimers).forEach(clearInterval);
+    routineReminderTimers = {};
+}
+
+function scheduleRoutineReminders(routines) {
+    clearRoutineReminders();
+    (routines || []).forEach(r => {
+        const mins = r.reminder_interval || 0;
+        if (mins > 0 && !r.done_today) {
+            routineReminderTimers[r.id] = setInterval(() => {
+                const verb = r.category === 'medication' ? '💊 Time for' : '💧 Routine reminder';
+                systemNotify(`${verb}: ${r.title}`, r.description || "Dot says: take care of this now.");
+            }, mins * 60 * 1000);
+        }
+    });
+}
+
+async function initReminders() {
+    try {
+        const res = await fetch('/api/routines');
+        const data = await res.json();
+        scheduleRoutineReminders(data.routines || []);
+    } catch (e) {
+        console.error('Reminder init failed:', e);
+    }
+}
+
+document.getElementById('enable-alerts-btn')?.addEventListener('click', () => {
+    if (!('Notification' in window)) {
+        showNotification('This browser does not support desktop notifications.');
+        return;
+    }
+    Notification.requestPermission().then(perm => {
+        if (perm === 'granted') {
+            systemNotify('Desktop alerts enabled', "Dot's got your back. Hydrate or diedrate.");
+        } else {
+            showNotification('Desktop alerts blocked. Enable them in your browser settings.');
+        }
+    }).catch(() => {});
+});
 
 // --- Tamagotchi rendering helpers ---
 function catArt(mood) {
@@ -198,7 +267,8 @@ async function loadRoutines() {
 
         const span = document.createElement('span');
         const tag = r.category === 'medication' ? '💊 ' : '';
-        span.innerText = ` ${tag}${r.title}`;
+        const reminder = r.reminder_interval > 0 ? ` ⏰ every ${r.reminder_interval}m` : '';
+        span.innerText = ` ${tag}${r.title}${reminder}`;
         if (r.category === 'medication') span.style.color = 'var(--corp-magenta)';
         if (r.done_today) {
             span.style.textDecoration = 'line-through';
@@ -209,6 +279,9 @@ async function loadRoutines() {
         li.appendChild(span);
         list.appendChild(li);
     });
+
+    // keep desktop reminders in sync with the current routine list
+    scheduleRoutineReminders(data.routines);
 }
 
 document.getElementById('recolor-btn')?.addEventListener('click', async () => {
@@ -233,12 +306,14 @@ document.getElementById('new-routine-form')?.addEventListener('submit', async (e
     e.preventDefault();
     const title = document.getElementById('new-routine-title').value;
     const category = document.getElementById('new-routine-category').value;
+    const reminder_interval = parseInt(document.getElementById('new-routine-interval').value) || 0;
     await fetch('/api/routines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, category })
+        body: JSON.stringify({ title, category, reminder_interval })
     });
     document.getElementById('new-routine-title').value = '';
+    document.getElementById('new-routine-interval').value = 0;
     loadRoutines();
 });
 
@@ -871,6 +946,7 @@ async function checkNotifications() {
                 p.innerText = `[ALERT] ${n.message}`;
                 p.style.color = 'var(--corp-amber)';
                 list.appendChild(p);
+                systemNotify('SYSTEM ALERT', n.message);
             });
             overlay.classList.remove('hidden');
             setTimeout(() => {
