@@ -51,24 +51,32 @@ calendar GET/POST round-trip all return 200.*
 
 ---
 
-## ❌ Missing spec features (designed but not built)
+## ✅ Phase A — Core Scrum/productivity (built 2026-06-26)
 
-5. **Daily Scrum 15-minute structured stand-up is not implemented.**
-   The spec requires a daily session answering the 3 Scrum questions
-   (yesterday / today / impediments). Right now there's only a sprint progress number
-   and an auto-created "Daily Scrum" calendar event — no guided Q&A flow.
+5. **Daily Scrum 15-minute structured stand-up.** ✅ DONE
+   New `scrum_entries` table, `/api/scrum` endpoint, and a Daily Scrum panel in the
+   Sprint screen with the 3 questions (yesterday / today / impediments). Dot reviews
+   each stand-up and gives tailored feedback referencing the linked sprint.
 
-6. **Sprint motivational graph + "issues overcome" reminder is missing.**
-   Spec asks for a progress graph, an estimated % completion, and a reminder that the
-   user "overcame X issues and made it." Currently it's just a numeric input field.
+6. **Sprint motivational graph + "issues overcome" reminder.** ✅ DONE
+   Active sprints now render a CSS progress bar each. Impediments reported in the
+   stand-up are logged to an `impediments` table; the user can mark them RESOLVED, and
+   a gold banner reminds them "You've overcome X impediments… you made it through every
+   one." (`/api/impediments/resolve`).
 
-7. **Focus-mode "motivational message every 15 minutes" is not implemented.**
-   Spec: while focusing on a task, Dot should auto-send a motivational nudge every
-   15 minutes. There's a chronometer but no recurring nudge.
+7. **Focus-mode "motivational message every 15 minutes".** ✅ DONE
+   Entering Focus mode starts a 15-min interval that calls `/api/focus/nudge`; Dot's
+   nudge is appended to the focus chat. Cleared on exit.
 
-8. **Medium-task "Deconstruct the Goal" (3–5 micro-tasks) is missing.**
-   No sub-task breakdown, no sticky-note view, no 2–4h time-blocking. The task is
-   stored as a single title + description only.
+8. **Medium-task "Deconstruct the Goal" (3–5 micro-tasks).** ✅ DONE
+   New `subtasks` table + `/api/tasks/subtasks` and `/api/tasks/deconstruct`. A
+   DECONSTRUCT button asks Dot to break the task into 3–5 micro-steps, parsed into
+   checkable sub-steps. Graceful fallback if no API key is configured.
+   *Note: sticky-note view and 2–4h time-blocking from the spec are still not built.*
+
+---
+
+## ❌ Still missing (later phases)
 
 9. **Tamagotchi stats never decay and the "self-care / can't die" logic is missing.**
    - Stats only ever go **up** (completing a routine), they never decrease over time,

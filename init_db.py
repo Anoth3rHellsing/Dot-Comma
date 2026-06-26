@@ -112,6 +112,41 @@ def init_db():
         )
     ''')
 
+    # Daily Scrum stand-up entries
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS scrum_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sprint_id INTEGER,
+            entry_date DATE DEFAULT CURRENT_DATE,
+            yesterday TEXT,
+            today TEXT,
+            impediments TEXT,
+            ai_feedback TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Impediments (tracked so Dot can celebrate the user overcoming them)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS impediments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sprint_id INTEGER,
+            description TEXT,
+            resolved INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Sub-tasks: the 3-5 micro-steps a medium task is deconstructed into
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS subtasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER,
+            title TEXT,
+            done INTEGER DEFAULT 0
+        )
+    ''')
+
     conn.commit()
     conn.close()
 

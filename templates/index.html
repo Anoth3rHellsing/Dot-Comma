@@ -105,9 +105,11 @@
             <!-- Section Placeholders -->
             <div id="sprints-section" class="hidden section">
                 <h2>[1] S.P.R.I.N.T. MENU</h2>
-                <p>Setup objectives, timelines, and track progress.</p>
+                <p>Set objectives, run your Daily Scrum, track progress, and crush impediments.</p>
 
-                <div style="display: flex; gap: 20px; height: 60vh;">
+                <div id="overcome-banner" style="border: 1px solid var(--corp-gold); padding: 8px; margin-bottom: 15px; color: var(--corp-gold); text-align: center; text-shadow: 0 0 5px var(--corp-gold); display: none;"></div>
+
+                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
                     <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; overflow-y: auto;">
                         <h3>NEW SPRINT</h3>
                         <form id="sprint-form">
@@ -126,8 +128,31 @@
                     </div>
 
                     <div style="flex: 1; border: 1px solid #00ff00; padding: 10px; overflow-y: auto;">
-                        <h3>ACTIVE SPRINTS</h3>
+                        <h3>ACTIVE SPRINTS &amp; PROGRESS</h3>
                         <div id="sprints-list"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1; border: 1px solid var(--corp-cyan); padding: 10px;">
+                        <h3 style="color: var(--corp-cyan);">DAILY SCRUM &mdash; 15 MIN STAND-UP</h3>
+                        <form id="scrum-form">
+                            <label style="color: var(--corp-cyan);">Link to Sprint (optional):</label><br>
+                            <select id="scrum-sprint" style="width: 92%;"><option value="">&mdash; None &mdash;</option></select><br><br>
+                            <label>1. What did you do yesterday toward the goal?</label><br>
+                            <textarea id="scrum-yesterday" rows="2" style="width: 92%;"></textarea><br>
+                            <label>2. What will you do today?</label><br>
+                            <textarea id="scrum-today" rows="2" style="width: 92%;"></textarea><br>
+                            <label>3. Any impediments in your way?</label><br>
+                            <textarea id="scrum-impediments" rows="2" style="width: 92%;"></textarea><br><br>
+                            <button type="submit">SUBMIT STAND-UP</button>
+                        </form>
+                        <div id="scrum-feedback" style="margin-top: 15px; color: var(--corp-cyan); font-style: italic;"></div>
+                    </div>
+
+                    <div style="flex: 1; border: 1px solid var(--corp-red); padding: 10px; overflow-y: auto; max-height: 50vh;">
+                        <h3 style="color: var(--corp-red);">IMPEDIMENTS</h3>
+                        <div id="impediments-list"></div>
                     </div>
                 </div>
 
@@ -156,6 +181,12 @@
                             <p id="detail-desc">...</p>
                             <button id="focus-btn" class="hidden">ENTER FOCUS MODE</button>
                             <button id="complete-btn" class="hidden">MARK COMPLETE</button>
+
+                            <div id="subtask-area" class="hidden" style="margin-top: 15px; border-top: 1px dashed #008080; padding-top: 10px;">
+                                <h4 style="color: var(--corp-gold); margin: 0 0 5px 0;">MICRO-STEPS</h4>
+                                <ul id="subtask-list" style="list-style: none; padding: 0; font-size: 0.9rem;"></ul>
+                                <button id="deconstruct-btn" style="font-size: 0.8em;">DECONSTRUCT GOAL (ASK DOT FOR 3&ndash;5 STEPS)</button>
+                            </div>
                         </div>
 
                         <!-- Focus Mode UI -->

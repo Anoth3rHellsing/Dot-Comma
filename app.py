@@ -1,4 +1,5 @@
 import os
+import re
 import datetime
 from flask import Flask, render_template, request, jsonify
 import sqlite3
@@ -421,6 +422,150 @@ def api_calendar():
             return jsonify({"status": "deleted"})
     finally:
         conn.close()
+
+@app.route('/api/scrum', methods=['GET', 'POST'])
+def api_scrum():
+    conn = get_db_connection()
+    try:
+        if request.method == 'GET':
+            entries = conn.execute('SELECT * FROM scrum_entries ORDER BY id DESC LIMIT 30').fetchall()
+            impediments = conn.execute('SELECT * FROM impediments ORDER BY resolved ASC, id DESC').fetchall()
+            overcome = conn.execute('SELECT COUNT(*) FROM impediments WHERE resolved = 1').fetchone()[0]
+            return jsonify({
+                'entries': [dict(e) for e in entries],
+                'impediments': [dict(i) for i in impediments],
+                'overcome_count': overcome
+            })
+
+        # POST: log a daily stand-up
+        data = request.json
+        sprint_id = data.get('sprint_id') or None
+        yesterday = data.get('yesterday', '')
+        today = data.get('today', '')
+        impediments = data.get('impediments', '')
+
+        sprint_text = ""
+        if sprint_id:
+            s = conn.execute('SELECT * FROM sprints WHERE id = ?', (sprint_id,)).fetchone()
+            if s:
+                sprint_text = f"Sprint goal: {s['objective']} (currently {s['progress']}% complete)."
+
+        prompt = (
+            f"This is the user's Daily Scrum stand-up. {sprint_text}\n"
+            f"1) What they did yesterday: {yesterday}\n"
+            f"2) What they'll do today: {today}\n"
+            f"3) Impediments: {impediments or 'None'}\n\n"
+            "Respond as Dot: acknowledge yesterday's progress, sharpen today's plan into something concrete and doable, "
+            "and if there are impediments, give one or two practical tips to get past them. Keep it punchy, under 5 sentences."
+        )
+        feedback = generate_ai_response(prompt)
+
+        conn.execute('''INSERT INTO scrum_entries (sprint_id, yesterday, today, impediments, ai_feedback)
+                        VALUES (?, ?, ?, ?, ?)''',
+                     (sprint_id, yesterday, today, impediments, feedback))
+
+        # Log a real impediment record if the user reported something meaningful
+        imp = (impediments or '').strip()
+        if imp and imp.lower() not in ('none', 'no', 'n/a', 'na', 'nothing', 'none.'):
+            conn.execute('INSERT INTO impediments (sprint_id, description) VALUES (?, ?)', (sprint_id, imp))
+
+        conn.execute('INSERT INTO chat_history (sender, message) VALUES (?, ?)', ('Dot', feedback))
+        conn.commit()
+        return jsonify({'status': 'success', 'feedback': feedback})
+    finally:
+        conn.close()
+
+
+@app.route('/api/impediments/resolve', methods=['POST'])
+def api_resolve_impediment():
+    conn = get_db_connection()
+    try:
+        imp_id = request.json.get('id')
+        conn.execute('UPDATE impediments SET resolved = 1 WHERE id = ?', (imp_id,))
+        conn.commit()
+        overcome = conn.execute('SELECT COUNT(*) FROM impediments WHERE resolved = 1').fetchone()[0]
+        msg = generate_ai_response(
+            f"The user just overcame an impediment. They have now overcome {overcome} obstacle(s) in total. "
+            "Give a short, begrudgingly proud one-liner reminding them they made it through and to keep going."
+        )
+        return jsonify({'status': 'success', 'overcome_count': overcome, 'dot_message': msg})
+    finally:
+        conn.close()
+
+
+@app.route('/api/tasks/subtasks', methods=['GET', 'POST', 'PUT'])
+def api_subtasks():
+    conn = get_db_connection()
+    try:
+        if request.method == 'GET':
+            task_id = request.args.get('task_id')
+            subs = conn.execute('SELECT * FROM subtasks WHERE task_id = ? ORDER BY id ASC', (task_id,)).fetchall()
+            return jsonify([dict(s) for s in subs])
+        elif request.method == 'POST':
+            data = request.json
+            conn.execute('INSERT INTO subtasks (task_id, title) VALUES (?, ?)',
+                         (data.get('task_id'), data.get('title')))
+            conn.commit()
+            return jsonify({'status': 'success'})
+        elif request.method == 'PUT':
+            data = request.json
+            conn.execute('UPDATE subtasks SET done = ? WHERE id = ?',
+                         (1 if data.get('done') else 0, data.get('id')))
+            conn.commit()
+            return jsonify({'status': 'success'})
+    finally:
+        conn.close()
+
+
+@app.route('/api/tasks/deconstruct', methods=['POST'])
+def api_deconstruct():
+    conn = get_db_connection()
+    try:
+        task_id = request.json.get('task_id')
+        task = conn.execute('SELECT * FROM medium_tasks WHERE id = ?', (task_id,)).fetchone()
+        if not task:
+            return jsonify({'status': 'error', 'message': 'Task not found.'}), 404
+
+        prompt = (
+            "Break this task into 3 to 5 concrete micro-steps the user can tackle one at a time.\n"
+            f"Task: {task['title']}\nDescription: {task['description'] or 'N/A'}\n\n"
+            "Respond with ONLY the micro-steps, one per line. No numbering, no preamble, no commentary. "
+            "Each step should be a short, actionable phrase."
+        )
+        response = generate_ai_response(prompt)
+
+        # If the AI errored (e.g. missing API key), surface it instead of creating junk steps.
+        if response.strip().startswith('[DOT]'):
+            return jsonify({'status': 'error', 'message': response})
+
+        steps = []
+        for line in response.splitlines():
+            line = re.sub(r'^\s*(\d+[\.\)]|[-*•])\s*', '', line.strip()).strip()
+            if line:
+                steps.append(line)
+        steps = steps[:5]
+
+        for s in steps:
+            conn.execute('INSERT INTO subtasks (task_id, title) VALUES (?, ?)', (task_id, s))
+        conn.commit()
+
+        subs = conn.execute('SELECT * FROM subtasks WHERE task_id = ? ORDER BY id ASC', (task_id,)).fetchall()
+        return jsonify({'status': 'success', 'subtasks': [dict(s) for s in subs]})
+    finally:
+        conn.close()
+
+
+@app.route('/api/focus/nudge', methods=['POST'])
+def api_focus_nudge():
+    data = request.json or {}
+    task = data.get('task') or 'their current task'
+    prompt = (
+        f"The user has been focusing on '{task}' for a while now. Send a short motivational nudge as Dot — "
+        "remind them that if they're blocked they can ask you for help, and push them to keep going. One or two sentences."
+    )
+    msg = generate_ai_response(prompt)
+    return jsonify({'message': msg})
+
 
 if __name__ == '__main__':
     init_db()
