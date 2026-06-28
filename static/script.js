@@ -552,6 +552,12 @@ async function loadJiraSettings() {
     const data = await res.json();
     document.getElementById('jira-url').value = data.jira_url || '';
     document.getElementById('jira-email').value = data.jira_email || '';
+    document.getElementById('jira-auth-type').value = data.jira_auth_type || 'bearer';
+    document.getElementById('jira-api-version').value = data.jira_api_version || '2';
+    document.getElementById('jira-filters').value = data.jira_filters || '';
+    document.getElementById('jira-tempo-url').value = data.jira_tempo_url || '';
+    document.getElementById('jira-high-priority').value = data.jira_high_priority || '';
+    document.getElementById('jira-poll-seconds').value = data.jira_poll_seconds || 60;
     document.getElementById('jira-token-status').innerText = data.jira_token_set ? '(token saved)' : '(no token yet)';
 }
 
@@ -560,7 +566,13 @@ document.getElementById('jira-settings-form')?.addEventListener('submit', async 
     const body = {
         jira_url: document.getElementById('jira-url').value,
         jira_email: document.getElementById('jira-email').value,
-        jira_token: document.getElementById('jira-token').value
+        jira_token: document.getElementById('jira-token').value,
+        jira_auth_type: document.getElementById('jira-auth-type').value,
+        jira_api_version: document.getElementById('jira-api-version').value,
+        jira_filters: document.getElementById('jira-filters').value,
+        jira_tempo_url: document.getElementById('jira-tempo-url').value,
+        jira_high_priority: document.getElementById('jira-high-priority').value,
+        jira_poll_seconds: parseInt(document.getElementById('jira-poll-seconds').value) || 60
     };
     await fetch('/api/jira/settings', {
         method: 'POST',
@@ -573,58 +585,144 @@ document.getElementById('jira-settings-form')?.addEventListener('submit', async 
 });
 
 // --- WORK (JIRA) ---
-function renderJiraIssues(container, issues) {
-    container.innerHTML = '';
-    if (!issues || issues.length === 0) {
-        container.innerHTML = '<p style="color:#888;">No open issues.</p>';
-        return;
-    }
-    issues.forEach(i => {
-        const div = document.createElement('div');
-        div.style.borderBottom = '1px dashed var(--corp-blue)';
-        div.style.padding = '6px 0';
-        div.style.fontSize = '0.9em';
-        const prio = i.priority ? ` · ${i.priority}` : '';
-        const due = i.duedate ? ` · due ${i.duedate}` : '';
-        div.innerHTML = `
-            <a href="${i.url}" target="_blank" style="color: var(--corp-blue); text-decoration: none;"><strong>${i.key}</strong></a>
-            — ${i.summary}<br>
-            <span style="color:#888; font-size:0.85em;">${i.type} · ${i.status}${prio}${due}</span>
-        `;
-        container.appendChild(div);
+const JIRA_VIEW_LABELS = { new: 'New tickets', assigned: 'Assigned to me', waiting: 'Waiting on others', mine: 'Mine (live)' };
+let jiraConfig = { high_priority_statuses: [], poll_seconds: 60, tempo_url: '', views: [] };
+let jiraCurrentView = null;
+let jiraCurrentIssues = [];
+let jiraPollTimer = null;
+let jiraSeenKeys = null; // baseline Set for new-ticket notifications
+
+function escapeJira(s) {
+    if (s == null) return '';
+    const d = document.createElement('div');
+    d.innerText = s;
+    return d.innerHTML;
+}
+
+function jiraStatusRank(t) {
+    const high = (jiraConfig.high_priority_statuses || []).map(s => s.toLowerCase());
+    if (t.status && high.includes(t.status.toLowerCase())) return 0;
+    if (t.status_category === 'done') return 3;
+    return 1;
+}
+
+function jiraSortTickets(a, b) {
+    return jiraStatusRank(a) - jiraStatusRank(b)
+        || a.priority_id - b.priority_id
+        || (b.updated || '').localeCompare(a.updated || '');
+}
+
+function renderJiraTabs() {
+    const tabs = document.getElementById('jira-tabs');
+    tabs.innerHTML = '';
+    const views = (jiraConfig.views && jiraConfig.views.length) ? jiraConfig.views.slice() : [];
+    views.push('mine');
+    views.forEach(v => {
+        const btn = document.createElement('button');
+        btn.className = 'jira-tab' + (v === jiraCurrentView ? ' active' : '');
+        btn.innerHTML = `${JIRA_VIEW_LABELS[v] || v} <span class="badge zero" id="jira-badge-${v}">0</span>`;
+        btn.onclick = () => selectJiraView(v);
+        tabs.appendChild(btn);
     });
 }
 
 async function loadJira() {
     const unconfigured = document.getElementById('jira-unconfigured');
-    const assigned = document.getElementById('jira-assigned-list');
-    const boardSelect = document.getElementById('jira-board-select');
     document.getElementById('jira-import-feedback').innerText = '';
-    assigned.innerHTML = 'Loading...';
-    boardSelect.innerHTML = '<option value="">— Select a board —</option>';
-    document.getElementById('jira-board-list').innerHTML = '';
+    document.getElementById('jira-detail').innerHTML =
+        '<p style="color:#888;">Select a ticket to read its description and latest replies.</p>';
 
-    // assigned issues
-    const res = await fetch('/api/jira/issues');
-    const data = await res.json();
-    if (data.status !== 'success') {
+    const cres = await fetch('/api/jira/config');
+    jiraConfig = await cres.json();
+    if (!jiraConfig.configured) {
         unconfigured.classList.remove('hidden');
-        unconfigured.innerText = `[SYSTEM]: ${data.message}`;
-        assigned.innerHTML = '';
+        document.getElementById('jira-ticket-list').innerHTML = '';
+        document.getElementById('jira-tabs').innerHTML = '';
+        stopJiraPolling();
         return;
     }
     unconfigured.classList.add('hidden');
-    renderJiraIssues(assigned, data.issues);
 
-    // boards
-    const bres = await fetch('/api/jira/boards');
-    const bdata = await bres.json();
-    if (bdata.status === 'success') {
-        bdata.boards.forEach(b => {
+    document.getElementById('jira-sound').checked = localStorage.getItem('jiraSound') === '1';
+    document.getElementById('jira-notify').checked = localStorage.getItem('jiraNotify') === '1';
+
+    jiraCurrentView = (jiraConfig.views && jiraConfig.views.length) ? jiraConfig.views[0] : 'mine';
+    renderJiraTabs();
+    await selectJiraView(jiraCurrentView);
+    loadJiraBoards();
+    startJiraPolling();
+}
+
+async function selectJiraView(view) {
+    jiraCurrentView = view;
+    renderJiraTabs();
+    const list = document.getElementById('jira-ticket-list');
+    list.innerHTML = '<p style="color:#888;">Loading...</p>';
+    const res = await fetch(`/api/jira/issues?view=${encodeURIComponent(view)}`);
+    const data = await res.json();
+    if (data.status !== 'success') {
+        list.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`;
+        return;
+    }
+    jiraCurrentIssues = data.issues;
+    renderJiraTickets();
+}
+
+function renderJiraTickets() {
+    const list = document.getElementById('jira-ticket-list');
+    const hideClosed = document.getElementById('jira-hide-closed').checked;
+    let issues = jiraCurrentIssues.slice();
+    if (hideClosed) issues = issues.filter(t => jiraStatusRank(t) !== 3);
+    issues.sort(jiraSortTickets);
+    list.innerHTML = '';
+    if (!issues.length) { list.innerHTML = '<p style="color:#888;">No tickets.</p>'; return; }
+    issues.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'jira-ticket' + (jiraStatusRank(t) === 3 ? ' closed' : '');
+        div.onclick = () => loadJiraDetail(t.key);
+        div.innerHTML = `<strong style="color: var(--corp-blue);">${escapeJira(t.key)}</strong> — ${escapeJira(t.summary)}<br>
+            <span style="color:#888; font-size:0.85em;">${escapeJira(t.type)} · ${escapeJira(t.status)} · <span class="prio">${escapeJira(t.priority)}</span></span>`;
+        list.appendChild(div);
+    });
+}
+
+document.getElementById('jira-hide-closed')?.addEventListener('change', renderJiraTickets);
+
+async function loadJiraDetail(key) {
+    const panel = document.getElementById('jira-detail');
+    panel.innerHTML = 'Loading...';
+    const res = await fetch(`/api/jira/issue?key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    if (data.status !== 'success') { panel.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`; return; }
+    const d = data.detail;
+    let html = `<div style="margin-bottom:8px;">
+        <strong style="color: var(--corp-blue);">${escapeJira(d.key)}</strong> — ${escapeJira(d.summary)}<br>
+        <span style="color:#888;">${escapeJira(d.status)}</span> ·
+        <a href="${d.url}" target="_blank" style="color: var(--corp-gold);">Open / Reply in Jira ↗</a>
+    </div>`;
+    html += `<div style="border-top:1px dashed var(--corp-blue); padding-top:8px;">${d.descHtml || '<em>No description.</em>'}</div>`;
+    if (d.comments && d.comments.length) {
+        html += `<h4 style="color: var(--corp-teal);">Recent comments</h4>`;
+        d.comments.forEach(c => {
+            const when = (c.created || '').slice(0, 16).replace('T', ' ');
+            html += `<div class="comment"><strong>${escapeJira(c.author)}</strong> <span style="color:#888; font-size:0.8em;">${when}</span>${c.bodyHtml}</div>`;
+        });
+    }
+    panel.innerHTML = html;
+}
+
+async function loadJiraBoards() {
+    const sel = document.getElementById('jira-board-select');
+    sel.innerHTML = '<option value="">— Select a board —</option>';
+    document.getElementById('jira-board-list').innerHTML = '';
+    const res = await fetch('/api/jira/boards');
+    const data = await res.json();
+    if (data.status === 'success') {
+        data.boards.forEach(b => {
             const opt = document.createElement('option');
             opt.value = b.id;
             opt.innerText = `${b.name} (${b.type})`;
-            boardSelect.appendChild(opt);
+            sel.appendChild(opt);
         });
     }
 }
@@ -633,14 +731,35 @@ document.getElementById('jira-board-select')?.addEventListener('change', async (
     const boardId = e.target.value;
     const list = document.getElementById('jira-board-list');
     if (!boardId) { list.innerHTML = ''; return; }
-    list.innerHTML = 'Loading board issues...';
+    list.innerHTML = 'Loading...';
     const res = await fetch(`/api/jira/board_issues?board_id=${boardId}`);
     const data = await res.json();
-    if (data.status === 'success') {
-        renderJiraIssues(list, data.issues);
-    } else {
-        list.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`;
-    }
+    if (data.status !== 'success') { list.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`; return; }
+    list.innerHTML = '';
+    data.issues.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'jira-ticket';
+        div.onclick = () => loadJiraDetail(t.key);
+        div.innerHTML = `<strong style="color: var(--corp-blue);">${escapeJira(t.key)}</strong> — ${escapeJira(t.summary)} <span style="color:#888; font-size:0.8em;">(${escapeJira(t.status)})</span>`;
+        list.appendChild(div);
+    });
+});
+
+document.getElementById('jira-refresh-btn')?.addEventListener('click', () => { if (jiraCurrentView) selectJiraView(jiraCurrentView); });
+
+document.getElementById('jira-mywork-btn')?.addEventListener('click', () => {
+    if (jiraConfig.tempo_url) window.open(jiraConfig.tempo_url, '_blank');
+    else showNotification('No Tempo URL configured in Settings.');
+});
+
+document.getElementById('jira-sound')?.addEventListener('change', (e) => {
+    localStorage.setItem('jiraSound', e.target.checked ? '1' : '0');
+    if (e.target.checked) jiraBeep(); // unlock audio on the user gesture
+});
+
+document.getElementById('jira-notify')?.addEventListener('change', (e) => {
+    localStorage.setItem('jiraNotify', e.target.checked ? '1' : '0');
+    if (e.target.checked) requestNotificationPermission();
 });
 
 document.getElementById('jira-import-btn')?.addEventListener('click', async () => {
@@ -648,12 +767,71 @@ document.getElementById('jira-import-btn')?.addEventListener('click', async () =
     fb.innerText = 'Importing...';
     const res = await fetch('/api/jira/import', { method: 'POST' });
     const data = await res.json();
-    if (data.status === 'success') {
-        fb.innerText = `Imported ${data.imported} new issue(s) into Tasks (${data.total} assigned total).`;
-    } else {
-        fb.innerText = data.message || 'Import failed.';
-    }
+    fb.innerText = data.status === 'success'
+        ? `Imported ${data.imported} new issue(s) into Tasks (${data.total} assigned total).`
+        : (data.message || 'Import failed.');
 });
+
+// polling + new-ticket notifications + sound
+function startJiraPolling() {
+    stopJiraPolling();
+    jiraSeenKeys = null; // first poll establishes the baseline (no notifications)
+    const ms = Math.max(20, jiraConfig.poll_seconds || 60) * 1000;
+    jiraPoll();
+    jiraPollTimer = setInterval(jiraPoll, ms);
+}
+
+function stopJiraPolling() {
+    if (jiraPollTimer) { clearInterval(jiraPollTimer); jiraPollTimer = null; }
+}
+
+async function jiraPoll() {
+    const views = (jiraConfig.views && jiraConfig.views.length) ? jiraConfig.views : ['mine'];
+    const currentKeys = new Set();
+    const fresh = [];
+    for (const v of views) {
+        try {
+            const res = await fetch(`/api/jira/issues?view=${encodeURIComponent(v)}`);
+            const data = await res.json();
+            if (data.status !== 'success') continue;
+            const open = data.issues.filter(t => jiraStatusRank(t) !== 3);
+            const badge = document.getElementById(`jira-badge-${v}`);
+            if (badge) { badge.innerText = open.length; badge.classList.toggle('zero', open.length === 0); }
+            open.forEach(t => {
+                currentKeys.add(t.key);
+                if (jiraSeenKeys && !jiraSeenKeys.has(t.key)) fresh.push(t);
+            });
+        } catch (e) { /* ignore transient poll errors */ }
+    }
+    if (jiraSeenKeys === null) {
+        jiraSeenKeys = currentKeys;
+    } else {
+        fresh.forEach(t => {
+            if (document.getElementById('jira-notify').checked) systemNotify(`New: ${t.key}`, t.summary || '');
+            if (document.getElementById('jira-sound').checked) jiraBeep();
+        });
+        jiraSeenKeys = currentKeys;
+    }
+}
+
+// two-tone chime via Web Audio (ported from JiraDashboard)
+let _jiraAudioCtx = null;
+function jiraBeep() {
+    try {
+        _jiraAudioCtx = _jiraAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (_jiraAudioCtx.state === 'suspended') _jiraAudioCtx.resume();
+        const now = _jiraAudioCtx.currentTime;
+        [[880, 0], [1320, 0.12]].forEach(([freq, t]) => {
+            const o = _jiraAudioCtx.createOscillator(), g = _jiraAudioCtx.createGain();
+            o.frequency.value = freq;
+            o.connect(g); g.connect(_jiraAudioCtx.destination);
+            g.gain.setValueAtTime(0.0001, now + t);
+            g.gain.exponentialRampToValueAtTime(0.2, now + t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.12);
+            o.start(now + t); o.stop(now + t + 0.13);
+        });
+    } catch (e) { /* audio unavailable */ }
+}
 
 async function loadMemory() {
     const res = await fetch('/api/memory');

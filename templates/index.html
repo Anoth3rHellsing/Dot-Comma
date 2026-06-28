@@ -330,14 +330,32 @@
                         </form>
                         <hr style="border: 1px solid var(--corp-blue); margin: 20px 0;">
                         <h3 style="color: var(--corp-blue);">JIRA CONNECTION</h3>
-                        <p style="font-size: 0.85em;">Connects Dot to your Jira to organize work. Create an API token at id.atlassian.com → Security → API tokens.</p>
+                        <p style="font-size: 0.8em;">Server (jira.cogep.com) now → Cloud later. Server: use a Personal Access Token (Bearer). Cloud: switch Auth to Basic, set your email, and an API token from id.atlassian.com.</p>
                         <form id="jira-settings-form">
                             <label>Jira Site URL:</label><br>
-                            <input type="text" id="jira-url" placeholder="https://yoursite.atlassian.net" style="width: 300px;"><br><br>
-                            <label>Jira Email:</label><br>
+                            <input type="text" id="jira-url" placeholder="https://jira.cogep.com" style="width: 300px;"><br><br>
+                            <label>Auth Type:</label>
+                            <select id="jira-auth-type" style="font-size: 0.9em;">
+                                <option value="bearer">Bearer (Server PAT)</option>
+                                <option value="basic">Basic (Cloud email + token)</option>
+                            </select>
+                            <label style="margin-left: 10px;">API Version:</label>
+                            <select id="jira-api-version" style="font-size: 0.9em;">
+                                <option value="2">2 (Server)</option>
+                                <option value="3">3 (Cloud)</option>
+                            </select><br><br>
+                            <label>Jira Email <span style="font-size:0.8em;">(only for Basic/Cloud)</span>:</label><br>
                             <input type="text" id="jira-email" placeholder="you@company.com" style="width: 300px;"><br><br>
-                            <label>Jira API Token:</label> <span id="jira-token-status" style="font-size: 0.8em; color: var(--corp-teal);"></span><br>
+                            <label>Jira Token:</label> <span id="jira-token-status" style="font-size: 0.8em; color: var(--corp-teal);"></span><br>
                             <input type="password" id="jira-token" placeholder="Paste token (leave blank to keep existing)" style="width: 300px;"><br><br>
+                            <label>Saved Filters (JSON of view → filter ID):</label><br>
+                            <input type="text" id="jira-filters" placeholder='{"new":"10712","assigned":"11419","waiting":"12004"}' style="width: 360px;"><br><br>
+                            <label>Tempo "My Work" URL:</label><br>
+                            <input type="text" id="jira-tempo-url" placeholder="https://jira.cogep.com/secure/Tempo.jspa#/my-work/week" style="width: 360px;"><br><br>
+                            <label>High-priority statuses (comma-sep):</label><br>
+                            <input type="text" id="jira-high-priority" placeholder="Open,Waiting for Support" style="width: 300px;">
+                            <label style="margin-left: 10px;">Poll (s):</label>
+                            <input type="number" id="jira-poll-seconds" min="20" value="60" style="width: 70px;"><br><br>
                             <button type="submit">SAVE JIRA CONNECTION</button>
                         </form>
 
@@ -406,29 +424,38 @@
 
             <div id="jira-section" class="hidden section">
                 <h2 style="color: var(--corp-blue);">[8] WORK (JIRA)</h2>
-                <p>Pull your Jira workload in so Dot can help you organize it.</p>
                 <div id="jira-unconfigured" class="hidden" style="color: var(--corp-amber); margin-bottom: 15px;">
-                    [SYSTEM]: Jira is not configured. Add your site URL, email, and API token in [5] System Settings.
+                    [SYSTEM]: Jira is not configured. Add your site URL and token in [5] System Settings.
                 </div>
 
-                <div style="display: flex; gap: 20px; height: 60vh;">
-                    <!-- Left: assigned issues + import -->
-                    <div style="flex: 1; border: 1px solid var(--corp-blue); padding: 10px; overflow-y: auto; display: flex; flex-direction: column;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3 style="color: var(--corp-blue); margin: 0;">MY ASSIGNED ISSUES</h3>
-                            <button id="jira-import-btn" style="font-size: 0.75em;">IMPORT → TASKS</button>
-                        </div>
-                        <div id="jira-import-feedback" style="color: var(--corp-gold); font-size: 0.85em; margin: 6px 0;"></div>
-                        <div id="jira-assigned-list" style="flex: 1; overflow-y: auto;"></div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                    <div id="jira-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                    <label class="ctrl"><input type="checkbox" id="jira-hide-closed" checked> Hide closed</label>
+                    <label class="ctrl"><input type="checkbox" id="jira-notify"> Notify</label>
+                    <label class="ctrl"><input type="checkbox" id="jira-sound"> Sound</label>
+                    <span style="flex: 1;"></span>
+                    <button id="jira-mywork-btn" style="font-size: 0.75em;">MY WORK (TEMPO)</button>
+                    <button id="jira-import-btn" style="font-size: 0.75em;">IMPORT MINE → TASKS</button>
+                    <button id="jira-refresh-btn" style="font-size: 0.75em;">⟳ REFRESH</button>
+                </div>
+                <div id="jira-import-feedback" style="color: var(--corp-gold); font-size: 0.85em; min-height: 1em;"></div>
+
+                <div style="display: flex; gap: 20px; height: 56vh;">
+                    <!-- Left: ticket list for the active view -->
+                    <div style="flex: 1; border: 1px solid var(--corp-blue); padding: 10px; overflow-y: auto;">
+                        <div id="jira-ticket-list"><p style="color:#888;">Loading...</p></div>
                     </div>
 
-                    <!-- Right: board / sprint browser -->
-                    <div style="flex: 1; border: 1px solid var(--corp-blue); padding: 10px; overflow-y: auto; display: flex; flex-direction: column;">
-                        <h3 style="color: var(--corp-blue); margin-top: 0;">BOARD / SPRINT</h3>
+                    <!-- Right: ticket detail + board browser -->
+                    <div style="flex: 1; border: 1px solid var(--corp-blue); padding: 10px; overflow-y: auto;">
+                        <h3 style="color: var(--corp-blue); margin-top: 0;">DETAIL</h3>
+                        <div id="jira-detail"><p style="color:#888;">Select a ticket to read its description and latest replies.</p></div>
+                        <hr style="border: 1px dashed var(--corp-blue); margin: 15px 0;">
+                        <h4 style="color: var(--corp-blue); margin: 0 0 6px 0;">BOARD BROWSER</h4>
                         <select id="jira-board-select" style="width: 100%;">
                             <option value="">— Select a board —</option>
                         </select>
-                        <div id="jira-board-list" style="flex: 1; overflow-y: auto; margin-top: 10px;"></div>
+                        <div id="jira-board-list" style="margin-top: 8px;"></div>
                     </div>
                 </div>
                 <br>

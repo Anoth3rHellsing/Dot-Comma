@@ -25,9 +25,27 @@ def init_db():
             user_name TEXT DEFAULT 'User',
             jira_url TEXT,
             jira_email TEXT,
-            jira_token TEXT
+            jira_token TEXT,
+            jira_auth_type TEXT DEFAULT 'bearer',
+            jira_api_version TEXT DEFAULT '2',
+            jira_filters TEXT,
+            jira_tempo_url TEXT,
+            jira_high_priority TEXT DEFAULT 'Open,Waiting for Support',
+            jira_poll_seconds INTEGER DEFAULT 60
         )
     ''')
+
+    # Sensible defaults pre-filled for the current cogep Jira Server setup.
+    # After the Cloud migration: change jira_url -> ...atlassian.net, jira_api_version -> 3,
+    # jira_auth_type -> basic, set jira_email, and update the filter IDs in Settings.
+    JIRA_DEFAULTS = {
+        'jira_url': 'https://jira.cogep.com',
+        'jira_auth_type': 'bearer',
+        'jira_api_version': '2',
+        'jira_filters': '{"new": "10712", "assigned": "11419", "waiting": "12004"}',
+        'jira_tempo_url': 'https://jira.cogep.com/secure/Tempo.jspa#/my-work/week',
+        'jira_high_priority': 'Open,Waiting for Support',
+    }
 
     # Calendar Events table
     c.execute('''
@@ -41,10 +59,14 @@ def init_db():
         )
     ''')
 
-    # Ensure at least one settings row exists
+    # Ensure at least one settings row exists (with Jira defaults pre-filled)
     c.execute('SELECT COUNT(*) FROM settings')
     if c.fetchone()[0] == 0:
-        c.execute('INSERT INTO settings (first_run) VALUES (1)')
+        c.execute('''INSERT INTO settings
+                     (first_run, jira_url, jira_auth_type, jira_api_version, jira_filters, jira_tempo_url, jira_high_priority)
+                     VALUES (1, ?, ?, ?, ?, ?, ?)''',
+                  (JIRA_DEFAULTS['jira_url'], JIRA_DEFAULTS['jira_auth_type'], JIRA_DEFAULTS['jira_api_version'],
+                   JIRA_DEFAULTS['jira_filters'], JIRA_DEFAULTS['jira_tempo_url'], JIRA_DEFAULTS['jira_high_priority']))
 
     # Chat History table
     c.execute('''
@@ -129,7 +151,17 @@ def init_db():
     _ensure_column(c, 'settings', 'jira_url', "jira_url TEXT")
     _ensure_column(c, 'settings', 'jira_email', "jira_email TEXT")
     _ensure_column(c, 'settings', 'jira_token', "jira_token TEXT")
+    _ensure_column(c, 'settings', 'jira_auth_type', "jira_auth_type TEXT DEFAULT 'bearer'")
+    _ensure_column(c, 'settings', 'jira_api_version', "jira_api_version TEXT DEFAULT '2'")
+    _ensure_column(c, 'settings', 'jira_filters', "jira_filters TEXT")
+    _ensure_column(c, 'settings', 'jira_tempo_url', "jira_tempo_url TEXT")
+    _ensure_column(c, 'settings', 'jira_high_priority', "jira_high_priority TEXT DEFAULT 'Open,Waiting for Support'")
+    _ensure_column(c, 'settings', 'jira_poll_seconds', "jira_poll_seconds INTEGER DEFAULT 60")
     _ensure_column(c, 'medium_tasks', 'jira_key', "jira_key TEXT")
+    # backfill Jira defaults for pre-existing settings rows that have them empty
+    c.execute("UPDATE settings SET jira_url = ? WHERE jira_url IS NULL OR jira_url = ''", (JIRA_DEFAULTS['jira_url'],))
+    c.execute("UPDATE settings SET jira_filters = ? WHERE jira_filters IS NULL OR jira_filters = ''", (JIRA_DEFAULTS['jira_filters'],))
+    c.execute("UPDATE settings SET jira_tempo_url = ? WHERE jira_tempo_url IS NULL OR jira_tempo_url = ''", (JIRA_DEFAULTS['jira_tempo_url'],))
     c.execute('UPDATE tamagotchi SET last_update = ? WHERE last_update IS NULL', (now_str,))
     c.execute("UPDATE tamagotchi SET color = 'gold' WHERE color IS NULL")
 

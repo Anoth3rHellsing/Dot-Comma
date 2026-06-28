@@ -138,21 +138,33 @@ calendar GET/POST round-trip all return 200.*
 External integrations (Spotify / Google / Microsoft / Twitch / YouTube) are **out**.
 The only outside services are **DeepSeek** (Dot's brain) and **Jira** (work organization).
 
-1. **Jira / work-job organization.** ✅ DONE
-   Fresh integration (no merge of the local JiraDashboard code — it wasn't reachable).
-   `jira_provider.py` talks to Jira Cloud REST; credentials (`jira_url` / `jira_email` /
-   `jira_token`) live in Settings using the same secret pattern as the DeepSeek key
-   (token never returned to the client). New **[8] WORK (JIRA)** screen:
-   - **My assigned issues** (`assignee = currentUser() AND statusCategory != Done`) with
-     an **IMPORT → TASKS** button — imported issues dedupe on `jira_key` and show their
-     key in the Tasks list.
-   - **Board / sprint picker** — lists Jira boards and surfaces the chosen board's open
-     issues (works for kanban and scrum).
-   - Auth is validated against `/rest/api/3/myself` (which 401s on a bad token) because
+1. **Jira / work-job organization.** ✅ DONE + reconciled with the JiraDashboard.zip
+   `jira_provider.py` is **config-driven** so it works against the current self-hosted
+   **`jira.cogep.com` (Server, REST v2, Bearer PAT)** today and flips to **Cloud
+   (`*.atlassian.net`, REST v3, Basic email+token)** after migration — just change Auth
+   Type / API Version / URL in Settings. Credentials use the same secret pattern as the
+   DeepSeek key (token never returned to the client).
+
+   Reconciled the original PowerShell JiraDashboard's logic into the **[8] WORK (JIRA)**
+   screen:
+   - **Saved-filter views** — New (`10712`), Assigned (`11419`), Waiting (`12004`), plus a
+     live "Mine" (`currentUser()`) view. Filter IDs are editable in Settings.
+   - **Status-priority sort + Hide closed** — high-priority statuses
+     (Open / Waiting for Support) float to the top; done/closed sink and hide by default.
+   - **Issue detail** — expandable description + last 10 comments (rendered HTML) + an
+     Open/Reply-in-Jira link.
+   - **Polling + badges + desktop notification + two-tone sound** for newly-arrived
+     tickets (poll interval configurable; baseline established on first poll).
+   - **"My Work" → Tempo** link.
+   - **IMPORT MINE → TASKS** (deduped on `jira_key`; tasks show their Jira key) and a
+     **board browser** (kanban + scrum) — both extras on top of the original dashboard.
+   - Auth validated against `/rest/api/{ver}/myself` (which 401s on a bad token) because
      `/search/jql` silently returns empty results for bad auth.
-   *Verified: settings storage + token masking, import/dedup (mocked issues), and clean
-   401 handling against the live cogep.atlassian.net site. Pulling real issues needs your
-   API token entered in Settings.*
+
+   *Verified: settings storage + token masking; Server-v2 and Cloud-v3 endpoint/JQL/auth
+   construction (mocked); sort/hide/detail/poll rendering in a real browser. Pulling real
+   issues needs your token in Settings, and `jira.cogep.com` must be reachable from
+   wherever the app runs (it's internal, so run Dot & Comma on your work network/VPN).*
 
 2. **System (desktop) notifications** for routine reminders (water, breaks, etc.) —
    built via the browser Notification API. ✅ DONE
