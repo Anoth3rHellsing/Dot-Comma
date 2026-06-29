@@ -90,10 +90,11 @@ calendar GET/POST round-trip all return 200.*
    - **Medications:** routines now have a `category` ('routine' | 'medication'); meds
      are tagged with 💊 and shown in magenta.
 
-10. **No external integrations at all** (all spec'd, none built):
-    - **Google Workspace / Microsoft 365** (Gmail, Outlook send/connect).
-    - **Spotify** daily playlist based on task load (lofi vs. "Pitbull-like").
-    - **Twitch / YouTube** connectors for content-creator performance.
+10. **External integrations dropped (plan change 2026-06-26).** ✅ REMOVED
+    Spotify, Google Workspace / Microsoft 365 (Gmail / Outlook), and Twitch / YouTube
+    were removed from the plan. The **only** external service Dot & Comma talks to is the
+    **DeepSeek** API (for Dot's responses). All references to the dropped services were
+    struck from `clause.md` and the `JULES READ THIS` brief.
 
 ---
 
@@ -132,9 +133,38 @@ calendar GET/POST round-trip all return 200.*
 
 ---
 
-## Suggested priority order
+## Current direction (2026-06-26)
 
-1. Fix the two Sprint bugs (#1, #2) — they make a whole menu effectively unusable.
-2. Fix the calendar connection leak (#3) and add the BACK button (#4).
-3. Decide which of the bigger spec features (#5–#12) are actually in scope for this
-   release vs. a later phase — the integrations (#10) especially are large efforts.
+External integrations (Spotify / Google / Microsoft / Twitch / YouTube) are **out**.
+The only outside services are **DeepSeek** (Dot's brain) and **Jira** (work organization).
+
+1. **Jira / work-job organization.** ✅ DONE + reconciled with the JiraDashboard.zip
+   `jira_provider.py` is **config-driven** so it works against the current self-hosted
+   **`jira.cogep.com` (Server, REST v2, Bearer PAT)** today and flips to **Cloud
+   (`*.atlassian.net`, REST v3, Basic email+token)** after migration — just change Auth
+   Type / API Version / URL in Settings. Credentials use the same secret pattern as the
+   DeepSeek key (token never returned to the client).
+
+   Reconciled the original PowerShell JiraDashboard's logic into the **[8] WORK (JIRA)**
+   screen:
+   - **Saved-filter views** — New (`10712`), Assigned (`11419`), Waiting (`12004`), plus a
+     live "Mine" (`currentUser()`) view. Filter IDs are editable in Settings.
+   - **Status-priority sort + Hide closed** — high-priority statuses
+     (Open / Waiting for Support) float to the top; done/closed sink and hide by default.
+   - **Issue detail** — expandable description + last 10 comments (rendered HTML) + an
+     Open/Reply-in-Jira link.
+   - **Polling + badges + desktop notification + two-tone sound** for newly-arrived
+     tickets (poll interval configurable; baseline established on first poll).
+   - **"My Work" → Tempo** link.
+   - **IMPORT MINE → TASKS** (deduped on `jira_key`; tasks show their Jira key) and a
+     **board browser** (kanban + scrum) — both extras on top of the original dashboard.
+   - Auth validated against `/rest/api/{ver}/myself` (which 401s on a bad token) because
+     `/search/jql` silently returns empty results for bad auth.
+
+   *Verified: settings storage + token masking; Server-v2 and Cloud-v3 endpoint/JQL/auth
+   construction (mocked); sort/hide/detail/poll rendering in a real browser. Pulling real
+   issues needs your token in Settings, and `jira.cogep.com` must be reachable from
+   wherever the app runs (it's internal, so run Dot & Comma on your work network/VPN).*
+
+2. **System (desktop) notifications** for routine reminders (water, breaks, etc.) —
+   built via the browser Notification API. ✅ DONE

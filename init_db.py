@@ -22,9 +22,30 @@ def init_db():
             context_size INTEGER DEFAULT 10,
             motd TEXT,
             motd_time DATETIME,
-            user_name TEXT DEFAULT 'User'
+            user_name TEXT DEFAULT 'User',
+            jira_url TEXT,
+            jira_email TEXT,
+            jira_token TEXT,
+            jira_auth_type TEXT DEFAULT 'bearer',
+            jira_api_version TEXT DEFAULT '2',
+            jira_filters TEXT,
+            jira_tempo_url TEXT,
+            jira_high_priority TEXT DEFAULT 'Open,Waiting for Support',
+            jira_poll_seconds INTEGER DEFAULT 60
         )
     ''')
+
+    # Sensible defaults pre-filled for the current cogep Jira Server setup.
+    # After the Cloud migration: change jira_url -> ...atlassian.net, jira_api_version -> 3,
+    # jira_auth_type -> basic, set jira_email, and update the filter IDs in Settings.
+    JIRA_DEFAULTS = {
+        'jira_url': 'https://jira.cogep.com',
+        'jira_auth_type': 'bearer',
+        'jira_api_version': '2',
+        'jira_filters': '{"new": "10712", "assigned": "11419", "waiting": "12004"}',
+        'jira_tempo_url': 'https://jira.cogep.com/secure/Tempo.jspa#/my-work/week',
+        'jira_high_priority': 'Open,Waiting for Support',
+    }
 
     # Calendar Events table
     c.execute('''
@@ -38,10 +59,14 @@ def init_db():
         )
     ''')
 
-    # Ensure at least one settings row exists
+    # Ensure at least one settings row exists (with Jira defaults pre-filled)
     c.execute('SELECT COUNT(*) FROM settings')
     if c.fetchone()[0] == 0:
-        c.execute('INSERT INTO settings (first_run) VALUES (1)')
+        c.execute('''INSERT INTO settings
+                     (first_run, jira_url, jira_auth_type, jira_api_version, jira_filters, jira_tempo_url, jira_high_priority)
+                     VALUES (1, ?, ?, ?, ?, ?, ?)''',
+                  (JIRA_DEFAULTS['jira_url'], JIRA_DEFAULTS['jira_auth_type'], JIRA_DEFAULTS['jira_api_version'],
+                   JIRA_DEFAULTS['jira_filters'], JIRA_DEFAULTS['jira_tempo_url'], JIRA_DEFAULTS['jira_high_priority']))
 
     # Chat History table
     c.execute('''
@@ -74,24 +99,27 @@ def init_db():
         )
     ''')
 
-    # Medium Tasks table
+    # Medium Tasks table (jira_key links a task back to an imported Jira issue)
     c.execute('''
         CREATE TABLE IF NOT EXISTS medium_tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             description TEXT,
-            status TEXT DEFAULT 'pending'
+            status TEXT DEFAULT 'pending',
+            jira_key TEXT
         )
     ''')
 
-    # Routine Tasks table (category distinguishes ordinary routines from medications)
+    # Routine Tasks table (category distinguishes ordinary routines from medications;
+    # reminder_interval is minutes between desktop reminders, 0 = no reminder)
     c.execute('''
         CREATE TABLE IF NOT EXISTS routine_tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             description TEXT,
             done_today BOOLEAN DEFAULT 0,
-            category TEXT DEFAULT 'routine'
+            category TEXT DEFAULT 'routine',
+            reminder_interval INTEGER DEFAULT 0
         )
     ''')
 
@@ -117,10 +145,40 @@ def init_db():
 
     # --- Migrations for databases created before these columns existed ---
     _ensure_column(c, 'routine_tasks', 'category', "category TEXT DEFAULT 'routine'")
+    _ensure_column(c, 'routine_tasks', 'reminder_interval', "reminder_interval INTEGER DEFAULT 0")
     _ensure_column(c, 'tamagotchi', 'color', "color TEXT DEFAULT 'gold'")
     _ensure_column(c, 'tamagotchi', 'last_update', "last_update DATETIME")
+    _ensure_column(c, 'settings', 'jira_url', "jira_url TEXT")
+    _ensure_column(c, 'settings', 'jira_email', "jira_email TEXT")
+    _ensure_column(c, 'settings', 'jira_token', "jira_token TEXT")
+    _ensure_column(c, 'settings', 'jira_auth_type', "jira_auth_type TEXT DEFAULT 'bearer'")
+    _ensure_column(c, 'settings', 'jira_api_version', "jira_api_version TEXT DEFAULT '2'")
+    _ensure_column(c, 'settings', 'jira_filters', "jira_filters TEXT")
+    _ensure_column(c, 'settings', 'jira_tempo_url', "jira_tempo_url TEXT")
+    _ensure_column(c, 'settings', 'jira_high_priority', "jira_high_priority TEXT DEFAULT 'Open,Waiting for Support'")
+    _ensure_column(c, 'settings', 'jira_poll_seconds', "jira_poll_seconds INTEGER DEFAULT 60")
+    _ensure_column(c, 'medium_tasks', 'jira_key', "jira_key TEXT")
+    # backfill Jira defaults for pre-existing settings rows that have them empty
+    c.execute("UPDATE settings SET jira_url = ? WHERE jira_url IS NULL OR jira_url = ''", (JIRA_DEFAULTS['jira_url'],))
+    c.execute("UPDATE settings SET jira_filters = ? WHERE jira_filters IS NULL OR jira_filters = ''", (JIRA_DEFAULTS['jira_filters'],))
+    c.execute("UPDATE settings SET jira_tempo_url = ? WHERE jira_tempo_url IS NULL OR jira_tempo_url = ''", (JIRA_DEFAULTS['jira_tempo_url'],))
     c.execute('UPDATE tamagotchi SET last_update = ? WHERE last_update IS NULL', (now_str,))
     c.execute("UPDATE tamagotchi SET color = 'gold' WHERE color IS NULL")
+
+    # Seed default health-reminder routines on a brand-new database (first run only)
+    c.execute('SELECT first_run FROM settings WHERE id = 1')
+    first_row = c.fetchone()
+    c.execute('SELECT COUNT(*) FROM routine_tasks')
+    if first_row and first_row[0] and c.fetchone()[0] == 0:
+        defaults = [
+            ('Drink water', 'Stay hydrated.', 60),
+            ('Stand up & move', 'Get the blood flowing.', 90),
+            ('Rest your eyes (20-20-20)', 'Look 20ft away for 20 seconds.', 120),
+            ('Eat something', 'Fuel up properly.', 240),
+        ]
+        for title, desc, interval in defaults:
+            c.execute('''INSERT INTO routine_tasks (title, description, done_today, category, reminder_interval)
+                         VALUES (?, ?, 0, 'routine', ?)''', (title, desc, interval))
 
     # Economy & Finance table
     c.execute('''

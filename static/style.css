@@ -271,3 +271,54 @@ button:hover {
     border-color: var(--corp-green);
     background: rgba(0, 255, 0, 0.1);
 }
+
+/* WORK (JIRA) screen */
+.ctrl { font-size: 0.85em; color: var(--corp-blue); cursor: pointer; }
+
+.jira-tab {
+    background: transparent;
+    border: 1px solid var(--corp-blue);
+    color: var(--corp-blue);
+    padding: 4px 10px;
+    font-size: 0.8em;
+    cursor: pointer;
+    position: relative;
+}
+
+.jira-tab.active {
+    background: var(--corp-blue);
+    color: black;
+    font-weight: bold;
+}
+
+.jira-tab .badge {
+    background: var(--corp-red);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 6px;
+    font-size: 0.75em;
+    margin-left: 6px;
+}
+
+.jira-tab .badge.zero { display: none; }
+
+.jira-ticket {
+    border-bottom: 1px dashed var(--corp-blue);
+    padding: 7px 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.jira-ticket:hover { background: rgba(0, 136, 255, 0.1); }
+.jira-ticket.closed { opacity: 0.55; }
+
+.jira-ticket .prio { color: var(--corp-amber); font-size: 0.8em; }
+
+#jira-detail .comment {
+    border-left: 2px solid var(--corp-teal);
+    padding-left: 8px;
+    margin: 8px 0;
+    font-size: 0.88em;
+}
+
+#jira-detail .comment img { max-width: 100%; }

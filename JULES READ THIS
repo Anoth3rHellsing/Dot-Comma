@@ -10,7 +10,7 @@ The users must daily sit at least 15 minutes with the AI to answer:
 1.	What did I do yesterday that helped meet the Sprint Goal?
 2.	What will I do today to help meet this Sprint Goal?
 3.	Are there any impediments preventing me or the team from achieving this goal?
-The Daily Scrum is focused mostly on the bigger complicated tasks, such as preparing for a wedding, prepare for an anniversary, a job interview, and so on. Tasks that requires constant effort, prior preparation, and can be stressful in some point. The AI will give tips and tricks by researching and try to make that the user do as much as they can on their side. However, the AI also will try to help with tasks they can do, such as prepare an investigation, research, send messages (through GMAIL, and Outlook) and connect with the Google Workspace and Microsoft 365 to do anything the user may need done that is simple enough or that is possible to do by the AI. 
+The Daily Scrum is focused mostly on the bigger complicated tasks, such as preparing for a wedding, prepare for an anniversary, a job interview, and so on. Tasks that requires constant effort, prior preparation, and can be stressful in some point. The AI will give tips and tricks by researching and try to make that the user do as much as they can on their side. However, the AI also will try to help with tasks they can do, such as prepare an investigation or research to do anything the user may need that is simple enough or that is possible to do by the AI.
 
 This must have its own screen and way to check the status, a graph that motivates the user with advance and an estimate of percentage of completion, and a reminder that he overcame x quantities of issues and he advanced through them, reminding them that they made it. 
 II.	Medium/Small tasks: Deconstruct to solve.
@@ -33,14 +33,8 @@ III.	Routine Tasks.
 
 The routine tasks are minor yet important tasks on the User life, such as remember to drink water, to eat properly, to take breaks, to move a little if they are sedentary for too long, sleeping good, and remember hygiene such as bath, brush tooth, cleaning the room, and all the basics. These tasks will motivate the user since in parallel, as they complete this, a virtual Tamagotchi that has the same needs as the user, will bath and so on. That way the user keeps healthy and the Tamagotchi gets healthy too. User can add medications, routines and more to the Routine tasks tab so they can keep healthy both the user and the Tamagotchi. The pet is always a cat. Colors may vary. Pet cannot die if AI suspects that the user is depressed by low self care behavior and chats and instead the pet will start to self care and motivate the user to do the same. 
 
-IV.	Spotify Connection
-
-Via Spotify replit integration the AI will be able to generate a daily playlist based on the tasks, if the user doesn’t have tasks, it will have lofi or relaxed music, if day is heavy, it will have pitbull like music. 
-
-V.	REPLIT Connectors
-
-Besides Google and Microsoft 365 there is also Twitch and YouTube connectors to see the performance for content creators. 
-
+(Sections on Spotify and external Replit/Google/Microsoft/Twitch/YouTube connectors
+were removed — see plan change 2026-06-26. DeepSeek is the only external service.)
 
 VI.	Dot personal assistant (Personality of AI)
 

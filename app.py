@@ -3,6 +3,7 @@ import re
 import datetime
 from flask import Flask, render_template, request, jsonify
 import db_utils
+import jira_provider
 from ai_provider import generate_ai_response
 from init_db import init_db
 
@@ -160,8 +161,12 @@ def api_routines():
     elif request.method == 'POST':
         data = request.json
         category = data.get('category', 'routine')
-        conn.execute('INSERT INTO routine_tasks (title, description, done_today, category) VALUES (?, ?, 0, ?)',
-                     (data.get('title'), data.get('description', ''), category))
+        try:
+            interval = int(data.get('reminder_interval', 0) or 0)
+        except (TypeError, ValueError):
+            interval = 0
+        conn.execute('INSERT INTO routine_tasks (title, description, done_today, category, reminder_interval) VALUES (?, ?, 0, ?, ?)',
+                     (data.get('title'), data.get('description', ''), category, interval))
         conn.commit()
         conn.close()
         return jsonify({'status': 'success'})
@@ -647,6 +652,128 @@ def api_focus_nudge():
     )
     msg = generate_ai_response(prompt)
     return jsonify({'message': msg})
+
+
+@app.route('/api/jira/settings', methods=['GET', 'POST'])
+def api_jira_settings():
+    conn = get_db_connection()
+    try:
+        if request.method == 'GET':
+            s = conn.execute('''SELECT jira_url, jira_email, jira_token, jira_auth_type, jira_api_version,
+                                       jira_filters, jira_tempo_url, jira_high_priority, jira_poll_seconds
+                                FROM settings WHERE id = 1''').fetchone()
+            s = dict(s) if s else {}
+            # never return the token itself — only whether one is stored
+            return jsonify({
+                'jira_url': s.get('jira_url') or '',
+                'jira_email': s.get('jira_email') or '',
+                'jira_token_set': bool(s.get('jira_token')),
+                'jira_auth_type': s.get('jira_auth_type') or 'bearer',
+                'jira_api_version': s.get('jira_api_version') or '2',
+                'jira_filters': s.get('jira_filters') or '{}',
+                'jira_tempo_url': s.get('jira_tempo_url') or '',
+                'jira_high_priority': s.get('jira_high_priority') or '',
+                'jira_poll_seconds': s.get('jira_poll_seconds') or 60,
+            })
+
+        data = request.json or {}
+        conn.execute('''UPDATE settings SET jira_url = ?, jira_email = ?, jira_auth_type = ?,
+                               jira_api_version = ?, jira_filters = ?, jira_tempo_url = ?,
+                               jira_high_priority = ?, jira_poll_seconds = ?
+                        WHERE id = 1''',
+                     ((data.get('jira_url') or '').strip(),
+                      (data.get('jira_email') or '').strip(),
+                      (data.get('jira_auth_type') or 'bearer').strip(),
+                      (data.get('jira_api_version') or '2').strip(),
+                      (data.get('jira_filters') or '{}').strip(),
+                      (data.get('jira_tempo_url') or '').strip(),
+                      (data.get('jira_high_priority') or '').strip(),
+                      int(data.get('jira_poll_seconds') or 60)))
+        # only overwrite the token when a new non-empty one is provided
+        token = data.get('jira_token')
+        if token:
+            conn.execute('UPDATE settings SET jira_token = ? WHERE id = 1', (token.strip(),))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    finally:
+        conn.close()
+
+
+@app.route('/api/jira/config', methods=['GET'])
+def api_jira_config():
+    """Client-side config for the WORK screen (no secrets)."""
+    s = jira_provider.get_jira_settings()
+    high = [x.strip() for x in (s.get('jira_high_priority') or '').split(',') if x.strip()]
+    return jsonify({
+        'configured': jira_provider.is_configured(),
+        'poll_seconds': s.get('jira_poll_seconds') or 60,
+        'high_priority_statuses': high,
+        'tempo_url': s.get('jira_tempo_url') or '',
+        'views': list(jira_provider.get_filters_map().keys()),
+    })
+
+
+@app.route('/api/jira/issues', methods=['GET'])
+def api_jira_issues():
+    view = request.args.get('view', 'mine')
+    issues, err = jira_provider.get_issues_for_view(view)
+    if err:
+        return jsonify({'status': 'error', 'message': err}), 400
+    return jsonify({'status': 'success', 'issues': issues})
+
+
+@app.route('/api/jira/issue', methods=['GET'])
+def api_jira_issue_detail():
+    key = request.args.get('key')
+    if not key:
+        return jsonify({'status': 'error', 'message': 'key is required.'}), 400
+    detail, err = jira_provider.get_issue_detail(key)
+    if err:
+        return jsonify({'status': 'error', 'message': err}), 400
+    return jsonify({'status': 'success', 'detail': detail})
+
+
+@app.route('/api/jira/import', methods=['POST'])
+def api_jira_import():
+    issues, err = jira_provider.get_assigned_issues()
+    if err:
+        return jsonify({'status': 'error', 'message': err}), 400
+
+    conn = get_db_connection()
+    imported = 0
+    for i in issues:
+        if not i.get('key'):
+            continue
+        existing = conn.execute('SELECT id FROM medium_tasks WHERE jira_key = ?', (i['key'],)).fetchone()
+        if existing:
+            continue
+        bits = [b for b in [i.get('type'), i.get('status'), i.get('priority')] if b]
+        desc = f"[{i['key']}] " + " · ".join(bits) + f"\n{i['url']}"
+        conn.execute('INSERT INTO medium_tasks (title, description, jira_key) VALUES (?, ?, ?)',
+                     (i['summary'], desc, i['key']))
+        imported += 1
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success', 'imported': imported, 'total': len(issues)})
+
+
+@app.route('/api/jira/boards', methods=['GET'])
+def api_jira_boards():
+    boards, err = jira_provider.get_boards()
+    if err:
+        return jsonify({'status': 'error', 'message': err}), 400
+    return jsonify({'status': 'success', 'boards': boards})
+
+
+@app.route('/api/jira/board_issues', methods=['GET'])
+def api_jira_board_issues():
+    board_id = request.args.get('board_id')
+    if not board_id:
+        return jsonify({'status': 'error', 'message': 'board_id is required.'}), 400
+    issues, err = jira_provider.get_board_issues(board_id)
+    if err:
+        return jsonify({'status': 'error', 'message': err}), 400
+    return jsonify({'status': 'success', 'issues': issues})
 
 
 if __name__ == '__main__':

@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     setInterval(updateClock, 1000);
     // Check notifications every 15 seconds
     setInterval(checkNotifications, 15000);
+    // Schedule routine reminders (water, breaks, meds) app-wide, regardless of screen
+    initReminders();
 
     // Boot Animation Sequence
     const bootLines = [
@@ -51,6 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (e.key === '5') navigate('settings');
             if (e.key === '6') navigate('finance');
             if (e.key === '7') navigate('calendar');
+            if (e.key === '8') navigate('jira');
         } else {
             // Only allow 0 to go back if we are not on intro screen
             if (e.key === '0' && document.getElementById('intro-screen').classList.contains('hidden')) {
@@ -106,8 +109,11 @@ async function finishIntro() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_name: nameInput })
     });
+    // Onboarding click is a user gesture — a good moment to ask for notification permission
+    requestNotificationPermission();
     document.getElementById('intro-screen').classList.add('hidden');
     await loadDashboard();
+    initReminders();
 }
 
 function navigate(section) {
@@ -134,6 +140,8 @@ function navigate(section) {
             loadGeneralChat();
         } else if (section === 'finance') {
             loadFinance();
+        } else if (section === 'jira') {
+            loadJira();
         }
     }
 }
@@ -149,6 +157,70 @@ function showNotification(msg) {
         setTimeout(() => toast.classList.add('hidden'), 500);
     }, 5000);
 }
+
+// --- System (desktop) notifications ---
+function requestNotificationPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+    }
+}
+
+// Show a real OS notification when allowed; otherwise fall back to the in-page toast.
+function systemNotify(title, body) {
+    if (('Notification' in window) && Notification.permission === 'granted') {
+        try {
+            new Notification(title, { body });
+            return;
+        } catch (e) { /* fall through to the toast */ }
+    }
+    showNotification(`${title} — ${body}`);
+}
+
+// --- Routine reminders (water, breaks, medication, etc.) ---
+let routineReminderTimers = {};
+
+function clearRoutineReminders() {
+    Object.values(routineReminderTimers).forEach(clearInterval);
+    routineReminderTimers = {};
+}
+
+function scheduleRoutineReminders(routines) {
+    clearRoutineReminders();
+    (routines || []).forEach(r => {
+        const mins = r.reminder_interval || 0;
+        if (mins > 0 && !r.done_today) {
+            routineReminderTimers[r.id] = setInterval(() => {
+                const verb = r.category === 'medication' ? '💊 Time for' : '💧 Routine reminder';
+                systemNotify(`${verb}: ${r.title}`, r.description || "Dot says: take care of this now.");
+            }, mins * 60 * 1000);
+        }
+    });
+}
+
+async function initReminders() {
+    try {
+        const res = await fetch('/api/routines');
+        const data = await res.json();
+        scheduleRoutineReminders(data.routines || []);
+    } catch (e) {
+        console.error('Reminder init failed:', e);
+    }
+}
+
+document.getElementById('enable-alerts-btn')?.addEventListener('click', () => {
+    if (!('Notification' in window)) {
+        showNotification('This browser does not support desktop notifications.');
+        return;
+    }
+    Notification.requestPermission().then(perm => {
+        if (perm === 'granted') {
+            systemNotify('Desktop alerts enabled', "Dot's got your back. Hydrate or diedrate.");
+        } else {
+            showNotification('Desktop alerts blocked. Enable them in your browser settings.');
+        }
+    }).catch(() => {});
+});
 
 // --- Tamagotchi rendering helpers ---
 function catArt(mood) {
@@ -198,7 +270,8 @@ async function loadRoutines() {
 
         const span = document.createElement('span');
         const tag = r.category === 'medication' ? '💊 ' : '';
-        span.innerText = ` ${tag}${r.title}`;
+        const reminder = r.reminder_interval > 0 ? ` ⏰ every ${r.reminder_interval}m` : '';
+        span.innerText = ` ${tag}${r.title}${reminder}`;
         if (r.category === 'medication') span.style.color = 'var(--corp-magenta)';
         if (r.done_today) {
             span.style.textDecoration = 'line-through';
@@ -209,6 +282,9 @@ async function loadRoutines() {
         li.appendChild(span);
         list.appendChild(li);
     });
+
+    // keep desktop reminders in sync with the current routine list
+    scheduleRoutineReminders(data.routines);
 }
 
 document.getElementById('recolor-btn')?.addEventListener('click', async () => {
@@ -233,12 +309,14 @@ document.getElementById('new-routine-form')?.addEventListener('submit', async (e
     e.preventDefault();
     const title = document.getElementById('new-routine-title').value;
     const category = document.getElementById('new-routine-category').value;
+    const reminder_interval = parseInt(document.getElementById('new-routine-interval').value) || 0;
     await fetch('/api/routines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, category })
+        body: JSON.stringify({ title, category, reminder_interval })
     });
     document.getElementById('new-routine-title').value = '';
+    document.getElementById('new-routine-interval').value = 0;
     loadRoutines();
 });
 
@@ -255,7 +333,7 @@ async function loadTasks() {
     tasks.forEach(t => {
         if (t.status === 'done') return;
         const li = document.createElement('li');
-        li.innerText = `> ${t.title}`;
+        li.innerText = t.jira_key ? `> [${t.jira_key}] ${t.title}` : `> ${t.title}`;
         li.onclick = () => selectTask(t);
         list.appendChild(li);
     });
@@ -466,6 +544,293 @@ async function loadSettings() {
     document.getElementById('context-size').value = data.context_size || 10;
 
     loadMemory();
+    loadJiraSettings();
+}
+
+async function loadJiraSettings() {
+    const res = await fetch('/api/jira/settings');
+    const data = await res.json();
+    document.getElementById('jira-url').value = data.jira_url || '';
+    document.getElementById('jira-email').value = data.jira_email || '';
+    document.getElementById('jira-auth-type').value = data.jira_auth_type || 'bearer';
+    document.getElementById('jira-api-version').value = data.jira_api_version || '2';
+    document.getElementById('jira-filters').value = data.jira_filters || '';
+    document.getElementById('jira-tempo-url').value = data.jira_tempo_url || '';
+    document.getElementById('jira-high-priority').value = data.jira_high_priority || '';
+    document.getElementById('jira-poll-seconds').value = data.jira_poll_seconds || 60;
+    document.getElementById('jira-token-status').innerText = data.jira_token_set ? '(token saved)' : '(no token yet)';
+}
+
+document.getElementById('jira-settings-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+        jira_url: document.getElementById('jira-url').value,
+        jira_email: document.getElementById('jira-email').value,
+        jira_token: document.getElementById('jira-token').value,
+        jira_auth_type: document.getElementById('jira-auth-type').value,
+        jira_api_version: document.getElementById('jira-api-version').value,
+        jira_filters: document.getElementById('jira-filters').value,
+        jira_tempo_url: document.getElementById('jira-tempo-url').value,
+        jira_high_priority: document.getElementById('jira-high-priority').value,
+        jira_poll_seconds: parseInt(document.getElementById('jira-poll-seconds').value) || 60
+    };
+    await fetch('/api/jira/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    document.getElementById('jira-token').value = '';
+    showNotification('Jira connection saved.');
+    loadJiraSettings();
+});
+
+// --- WORK (JIRA) ---
+const JIRA_VIEW_LABELS = { new: 'New tickets', assigned: 'Assigned to me', waiting: 'Waiting on others', mine: 'Mine (live)' };
+let jiraConfig = { high_priority_statuses: [], poll_seconds: 60, tempo_url: '', views: [] };
+let jiraCurrentView = null;
+let jiraCurrentIssues = [];
+let jiraPollTimer = null;
+let jiraSeenKeys = null; // baseline Set for new-ticket notifications
+
+function escapeJira(s) {
+    if (s == null) return '';
+    const d = document.createElement('div');
+    d.innerText = s;
+    return d.innerHTML;
+}
+
+function jiraStatusRank(t) {
+    const high = (jiraConfig.high_priority_statuses || []).map(s => s.toLowerCase());
+    if (t.status && high.includes(t.status.toLowerCase())) return 0;
+    if (t.status_category === 'done') return 3;
+    return 1;
+}
+
+function jiraSortTickets(a, b) {
+    return jiraStatusRank(a) - jiraStatusRank(b)
+        || a.priority_id - b.priority_id
+        || (b.updated || '').localeCompare(a.updated || '');
+}
+
+function renderJiraTabs() {
+    const tabs = document.getElementById('jira-tabs');
+    tabs.innerHTML = '';
+    const views = (jiraConfig.views && jiraConfig.views.length) ? jiraConfig.views.slice() : [];
+    views.push('mine');
+    views.forEach(v => {
+        const btn = document.createElement('button');
+        btn.className = 'jira-tab' + (v === jiraCurrentView ? ' active' : '');
+        btn.innerHTML = `${JIRA_VIEW_LABELS[v] || v} <span class="badge zero" id="jira-badge-${v}">0</span>`;
+        btn.onclick = () => selectJiraView(v);
+        tabs.appendChild(btn);
+    });
+}
+
+async function loadJira() {
+    const unconfigured = document.getElementById('jira-unconfigured');
+    document.getElementById('jira-import-feedback').innerText = '';
+    document.getElementById('jira-detail').innerHTML =
+        '<p style="color:#888;">Select a ticket to read its description and latest replies.</p>';
+
+    const cres = await fetch('/api/jira/config');
+    jiraConfig = await cres.json();
+    if (!jiraConfig.configured) {
+        unconfigured.classList.remove('hidden');
+        document.getElementById('jira-ticket-list').innerHTML = '';
+        document.getElementById('jira-tabs').innerHTML = '';
+        stopJiraPolling();
+        return;
+    }
+    unconfigured.classList.add('hidden');
+
+    document.getElementById('jira-sound').checked = localStorage.getItem('jiraSound') === '1';
+    document.getElementById('jira-notify').checked = localStorage.getItem('jiraNotify') === '1';
+
+    jiraCurrentView = (jiraConfig.views && jiraConfig.views.length) ? jiraConfig.views[0] : 'mine';
+    renderJiraTabs();
+    await selectJiraView(jiraCurrentView);
+    loadJiraBoards();
+    startJiraPolling();
+}
+
+async function selectJiraView(view) {
+    jiraCurrentView = view;
+    renderJiraTabs();
+    const list = document.getElementById('jira-ticket-list');
+    list.innerHTML = '<p style="color:#888;">Loading...</p>';
+    const res = await fetch(`/api/jira/issues?view=${encodeURIComponent(view)}`);
+    const data = await res.json();
+    if (data.status !== 'success') {
+        list.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`;
+        return;
+    }
+    jiraCurrentIssues = data.issues;
+    renderJiraTickets();
+}
+
+function renderJiraTickets() {
+    const list = document.getElementById('jira-ticket-list');
+    const hideClosed = document.getElementById('jira-hide-closed').checked;
+    let issues = jiraCurrentIssues.slice();
+    if (hideClosed) issues = issues.filter(t => jiraStatusRank(t) !== 3);
+    issues.sort(jiraSortTickets);
+    list.innerHTML = '';
+    if (!issues.length) { list.innerHTML = '<p style="color:#888;">No tickets.</p>'; return; }
+    issues.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'jira-ticket' + (jiraStatusRank(t) === 3 ? ' closed' : '');
+        div.onclick = () => loadJiraDetail(t.key);
+        div.innerHTML = `<strong style="color: var(--corp-blue);">${escapeJira(t.key)}</strong> — ${escapeJira(t.summary)}<br>
+            <span style="color:#888; font-size:0.85em;">${escapeJira(t.type)} · ${escapeJira(t.status)} · <span class="prio">${escapeJira(t.priority)}</span></span>`;
+        list.appendChild(div);
+    });
+}
+
+document.getElementById('jira-hide-closed')?.addEventListener('change', renderJiraTickets);
+
+async function loadJiraDetail(key) {
+    const panel = document.getElementById('jira-detail');
+    panel.innerHTML = 'Loading...';
+    const res = await fetch(`/api/jira/issue?key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    if (data.status !== 'success') { panel.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`; return; }
+    const d = data.detail;
+    let html = `<div style="margin-bottom:8px;">
+        <strong style="color: var(--corp-blue);">${escapeJira(d.key)}</strong> — ${escapeJira(d.summary)}<br>
+        <span style="color:#888;">${escapeJira(d.status)}</span> ·
+        <a href="${d.url}" target="_blank" style="color: var(--corp-gold);">Open / Reply in Jira ↗</a>
+    </div>`;
+    html += `<div style="border-top:1px dashed var(--corp-blue); padding-top:8px;">${d.descHtml || '<em>No description.</em>'}</div>`;
+    if (d.comments && d.comments.length) {
+        html += `<h4 style="color: var(--corp-teal);">Recent comments</h4>`;
+        d.comments.forEach(c => {
+            const when = (c.created || '').slice(0, 16).replace('T', ' ');
+            html += `<div class="comment"><strong>${escapeJira(c.author)}</strong> <span style="color:#888; font-size:0.8em;">${when}</span>${c.bodyHtml}</div>`;
+        });
+    }
+    panel.innerHTML = html;
+}
+
+async function loadJiraBoards() {
+    const sel = document.getElementById('jira-board-select');
+    sel.innerHTML = '<option value="">— Select a board —</option>';
+    document.getElementById('jira-board-list').innerHTML = '';
+    const res = await fetch('/api/jira/boards');
+    const data = await res.json();
+    if (data.status === 'success') {
+        data.boards.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            opt.innerText = `${b.name} (${b.type})`;
+            sel.appendChild(opt);
+        });
+    }
+}
+
+document.getElementById('jira-board-select')?.addEventListener('change', async (e) => {
+    const boardId = e.target.value;
+    const list = document.getElementById('jira-board-list');
+    if (!boardId) { list.innerHTML = ''; return; }
+    list.innerHTML = 'Loading...';
+    const res = await fetch(`/api/jira/board_issues?board_id=${boardId}`);
+    const data = await res.json();
+    if (data.status !== 'success') { list.innerHTML = `<p style="color: var(--corp-amber);">${data.message}</p>`; return; }
+    list.innerHTML = '';
+    data.issues.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'jira-ticket';
+        div.onclick = () => loadJiraDetail(t.key);
+        div.innerHTML = `<strong style="color: var(--corp-blue);">${escapeJira(t.key)}</strong> — ${escapeJira(t.summary)} <span style="color:#888; font-size:0.8em;">(${escapeJira(t.status)})</span>`;
+        list.appendChild(div);
+    });
+});
+
+document.getElementById('jira-refresh-btn')?.addEventListener('click', () => { if (jiraCurrentView) selectJiraView(jiraCurrentView); });
+
+document.getElementById('jira-mywork-btn')?.addEventListener('click', () => {
+    if (jiraConfig.tempo_url) window.open(jiraConfig.tempo_url, '_blank');
+    else showNotification('No Tempo URL configured in Settings.');
+});
+
+document.getElementById('jira-sound')?.addEventListener('change', (e) => {
+    localStorage.setItem('jiraSound', e.target.checked ? '1' : '0');
+    if (e.target.checked) jiraBeep(); // unlock audio on the user gesture
+});
+
+document.getElementById('jira-notify')?.addEventListener('change', (e) => {
+    localStorage.setItem('jiraNotify', e.target.checked ? '1' : '0');
+    if (e.target.checked) requestNotificationPermission();
+});
+
+document.getElementById('jira-import-btn')?.addEventListener('click', async () => {
+    const fb = document.getElementById('jira-import-feedback');
+    fb.innerText = 'Importing...';
+    const res = await fetch('/api/jira/import', { method: 'POST' });
+    const data = await res.json();
+    fb.innerText = data.status === 'success'
+        ? `Imported ${data.imported} new issue(s) into Tasks (${data.total} assigned total).`
+        : (data.message || 'Import failed.');
+});
+
+// polling + new-ticket notifications + sound
+function startJiraPolling() {
+    stopJiraPolling();
+    jiraSeenKeys = null; // first poll establishes the baseline (no notifications)
+    const ms = Math.max(20, jiraConfig.poll_seconds || 60) * 1000;
+    jiraPoll();
+    jiraPollTimer = setInterval(jiraPoll, ms);
+}
+
+function stopJiraPolling() {
+    if (jiraPollTimer) { clearInterval(jiraPollTimer); jiraPollTimer = null; }
+}
+
+async function jiraPoll() {
+    const views = (jiraConfig.views && jiraConfig.views.length) ? jiraConfig.views : ['mine'];
+    const currentKeys = new Set();
+    const fresh = [];
+    for (const v of views) {
+        try {
+            const res = await fetch(`/api/jira/issues?view=${encodeURIComponent(v)}`);
+            const data = await res.json();
+            if (data.status !== 'success') continue;
+            const open = data.issues.filter(t => jiraStatusRank(t) !== 3);
+            const badge = document.getElementById(`jira-badge-${v}`);
+            if (badge) { badge.innerText = open.length; badge.classList.toggle('zero', open.length === 0); }
+            open.forEach(t => {
+                currentKeys.add(t.key);
+                if (jiraSeenKeys && !jiraSeenKeys.has(t.key)) fresh.push(t);
+            });
+        } catch (e) { /* ignore transient poll errors */ }
+    }
+    if (jiraSeenKeys === null) {
+        jiraSeenKeys = currentKeys;
+    } else {
+        fresh.forEach(t => {
+            if (document.getElementById('jira-notify').checked) systemNotify(`New: ${t.key}`, t.summary || '');
+            if (document.getElementById('jira-sound').checked) jiraBeep();
+        });
+        jiraSeenKeys = currentKeys;
+    }
+}
+
+// two-tone chime via Web Audio (ported from JiraDashboard)
+let _jiraAudioCtx = null;
+function jiraBeep() {
+    try {
+        _jiraAudioCtx = _jiraAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (_jiraAudioCtx.state === 'suspended') _jiraAudioCtx.resume();
+        const now = _jiraAudioCtx.currentTime;
+        [[880, 0], [1320, 0.12]].forEach(([freq, t]) => {
+            const o = _jiraAudioCtx.createOscillator(), g = _jiraAudioCtx.createGain();
+            o.frequency.value = freq;
+            o.connect(g); g.connect(_jiraAudioCtx.destination);
+            g.gain.setValueAtTime(0.0001, now + t);
+            g.gain.exponentialRampToValueAtTime(0.2, now + t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.12);
+            o.start(now + t); o.stop(now + t + 0.13);
+        });
+    } catch (e) { /* audio unavailable */ }
 }
 
 async function loadMemory() {
@@ -871,6 +1236,7 @@ async function checkNotifications() {
                 p.innerText = `[ALERT] ${n.message}`;
                 p.style.color = 'var(--corp-amber)';
                 list.appendChild(p);
+                systemNotify('SYSTEM ALERT', n.message);
             });
             overlay.classList.remove('hidden');
             setTimeout(() => {
